@@ -1,0 +1,10 @@
+[package]
+name = "DiscordBot9S"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.79"
+
+[dependencies]
+poise = "0.6.1"
+poise_macros = "0.6.1"
+tokio = { version = "1.38.0", features = ["full"] }
