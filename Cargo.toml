@@ -7,4 +7,6 @@ rust-version = "1.79"
 [dependencies]
 poise = "0.6.1"
 poise_macros = "0.6.1"
+reqwest = { version = "0.12.5", features = ["json"] }
+serde = "1.0.204"
 tokio = { version = "1.38.0", features = ["full"] }

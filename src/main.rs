@@ -1,4 +1,5 @@
-mod climate;
+mod commands;
+mod sources;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -25,8 +26,8 @@ async fn main() {
             },
             commands: vec![
                 help(),
-                climate::age(),
-                climate::boop()
+                commands::climate::age(),
+                commands::climate::temperature(),
             ],
             ..Default::default()
         })
