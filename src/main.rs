@@ -1,35 +1,41 @@
-use poise::serenity_prelude as serenity;
+mod climate;
 
-struct Data {} // User data, which is stored and accessible in all command invocations
+use std::sync::Arc;
+use std::time::Duration;
+use poise::{PrefixFrameworkOptions, serenity_prelude as serenity};
+use serenity::GatewayIntents;
+
+struct UserData {} // User data, which is stored and accessible in all command invocations
 type Error = Box<dyn std::error::Error + Send + Sync>;
-type Context<'a> = poise::Context<'a, Data, Error>;
+type Context<'a> = poise::Context<'a, UserData, Error>;
 
-/// Displays your or another user's account creation date
-#[poise::command(slash_command, prefix_command)]
-async fn age(
-    ctx: Context<'_>,
-    #[description = "Selected user"] user: Option<serenity::User>,
-) -> Result<(), Error> {
-    let u = user.as_ref().unwrap_or_else(|| ctx.author());
-    let response = format!("{}'s account was created at {}", u.name, u.created_at());
-    ctx.say(response).await?;
-    Ok(())
-}
 
 #[tokio::main]
 async fn main() {
-    let token = std::env::var("DISCORD_TOKEN").expect("missing DISCORD_TOKEN");
-    let intents = serenity::GatewayIntents::non_privileged();
+    let token = std::env::var("DISCORD_TOKEN").expect("ENV_VAR 'DISCORD_TOKEN' could not be located!");
+    let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![age()],
+            prefix_options: PrefixFrameworkOptions {
+                prefix: Some("!".into()),
+                edit_tracker: Some(Arc::new(poise::EditTracker::for_timespan(Duration::from_secs(3600)))),
+                case_insensitive_commands: true,
+                ..Default::default()
+            },
+            commands: vec![
+                help(),
+                climate::age(),
+                climate::boop()
+            ],
             ..Default::default()
         })
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
-                poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                Ok(Data {})
+                // poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+                poise::builtins::register_in_guild(ctx, &framework.options().commands,
+                                                   serenity::GuildId::from(239525762003238912)).await?;
+                Ok(UserData {})
             })
         })
         .build();
@@ -37,5 +43,24 @@ async fn main() {
     let client = serenity::ClientBuilder::new(token, intents)
         .framework(framework)
         .await;
+
     client.unwrap().start().await.unwrap();
+}
+
+/// Show an overview of all commands
+#[poise::command(prefix_command, track_edits, slash_command)]
+async fn help(
+    ctx: Context<'_>,
+    #[description = "Specific command to show help about"] command: Option<String>,
+) -> Result<(), Error> {
+
+    let config = poise::builtins::HelpConfiguration {
+        extra_text_at_bottom: "\
+Type ?help command for more info on a command.
+You can edit your message to the bot and the bot will edit its response.",
+        ..Default::default()
+    };
+
+    poise::builtins::help(ctx, command.as_deref(), config).await?;
+    Ok(())
 }
