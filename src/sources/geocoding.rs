@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use thiserror::Error;
+use std::fmt;
 
 const BASE_URL: &str = "https://geocoding-api.open-meteo.com/v1/search?count=10&language=de&format=json";
 
@@ -13,6 +14,12 @@ pub struct Place {
     /// Alpha-2 country code
     #[serde(rename = "country_code")]
     pub country: String,
+}
+
+impl fmt::Display for Place {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}, {}", self.name, self.country)
+    }
 }
 
 #[derive(Debug, Error)]

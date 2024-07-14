@@ -3,6 +3,7 @@ use poise::{serenity_prelude as serenity, CreateReply};
 use sources::geocoding;
 use sources::geocoding::Place;
 use poise::serenity_prelude::CreateSelectMenuKind;
+use serenity::CreateSelectMenuOption as MenuOption;
 
 /// Displays your or another user's account creation date
 #[poise::command(slash_command, prefix_command)]
@@ -51,35 +52,31 @@ async fn select_place<'a>(ctx: Context<'_>, places: &'a [Place], search_term: &s
         return places.first();
     }
 
-    Some(request_user_selection(ctx, places).await)
+    request_user_selection(ctx, places).await
 }
 
-async fn request_user_selection<'a>(ctx: Context<'_>, places: &'a [Place]) -> &'a Place {
+async fn request_user_selection<'a>(ctx: Context<'_>, places: &'a [Place]) -> Option<&'a Place> {
     const INTERACTION_ID: &str = "place_selection";
 
-    // TODO Add an option for each place
+    let options: Vec<MenuOption> = places.iter().enumerate()
+        .map(|(idx, p)| MenuOption::new(p.to_string(), idx.to_string())).collect();
+
     let components = vec![
         serenity::CreateActionRow::SelectMenu(
             serenity::CreateSelectMenu::new(
                 INTERACTION_ID,
-                CreateSelectMenuKind::String {
-                    options: vec![
-                        serenity::CreateSelectMenuOption::new("A", "A"),
-                        serenity::CreateSelectMenuOption::new("B", "B"),
-                        serenity::CreateSelectMenuOption::new("C", "C"),
-                        serenity::CreateSelectMenuOption::new("D", "D"),
-                    ]
-                })
+                CreateSelectMenuKind::String { options })
                 .placeholder("Select place")
         ),
     ];
 
+    // send the question with the selection menu
     let reply = CreateReply::default()
         .content("Which one of these is the place you are looking for?")
         .components(components);
     ctx.send(reply).await.unwrap();
 
-
+    // react on the first interaction on the selection menu (with timeout)
     if let Some(interaction) = serenity::ComponentInteractionCollector::new(ctx.serenity_context())
         .author_id(ctx.author().id)
         .channel_id(ctx.channel_id())
@@ -88,14 +85,12 @@ async fn request_user_selection<'a>(ctx: Context<'_>, places: &'a [Place]) -> &'
         .await
     {
         let selected_value = match &interaction.data.kind {
-            serenity::ComponentInteractionDataKind::StringSelect {
-                values,
-            } => &values[0],
+            serenity::ComponentInteractionDataKind::StringSelect { values} => &values[0],
             _ => panic!("unexpected interaction data kind"),
         };
 
-        ctx.say(selected_value).await.unwrap();
+        return places.get(selected_value.parse::<usize>().unwrap());
     }
 
-    return places.first().unwrap();
+    None
 }
