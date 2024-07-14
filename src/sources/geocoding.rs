@@ -1,9 +1,10 @@
 use serde::Deserialize;
 use thiserror::Error;
 
-const BASE_URL: &str = "https://geocoding-api.open-meteo.com/v1/search?count=5&language=de&format=json";
+const BASE_URL: &str = "https://geocoding-api.open-meteo.com/v1/search?count=10&language=de&format=json";
 
 #[derive(Deserialize, Debug, Clone)]
+#[allow(dead_code)]
 pub struct Place {
     pub name: String,
     pub latitude: f64,
