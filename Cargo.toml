@@ -10,3 +10,5 @@ poise_macros = "0.6.1"
 reqwest = { version = "0.12.5", features = ["json"] }
 serde = "1.0.204"
 tokio = { version = "1.38.0", features = ["full"] }
+serde_json = "1.0.120"
+thiserror = "1.0.61"

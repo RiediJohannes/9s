@@ -16,15 +16,25 @@ pub async fn age(ctx: Context<'_>,
     Ok(())
 }
 
-#[poise::command(slash_command, prefix_command, track_edits)]
+#[poise::command(slash_command, prefix_command, track_edits, aliases("temp"))]
 pub async fn temperature(ctx: Context<'_>,
     #[description = "Name of a place"] place: String
 ) -> Result<(), Error> {
 
     let geo_result = geocoding::query_place(&place).await;
 
-    if let Ok(Some(place)) = geo_result {
-        ctx.say(&place.name).await?;
+    match geo_result {
+        Ok(places) => {
+            // TODO if first match matches exactly and second does not, take it. Else, show list to pick from
+
+            match places.first() {
+                Some(place) => ctx.say(&place.name).await?,
+                None => ctx.say("Could not find a matching place").await?,
+            };
+        }
+        Err(e) => {
+            ctx.say(format!("Oh no, an error occurred! Error: {}", e)).await?;
+        }
     }
 
     Ok(())
