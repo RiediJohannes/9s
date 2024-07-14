@@ -14,11 +14,33 @@ pub struct Place {
     /// Alpha-2 country code
     #[serde(rename = "country_code")]
     pub country: String,
+    admin1: Option<String>,
+    admin2: Option<String>,
+    admin3: Option<String>,
+    admin4: Option<String>,
 }
-
 impl fmt::Display for Place {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}, {}", self.name, self.country)
+        match self.get_district() {
+            Some(district) => write!(f, "{}, {}, {}", self.name, self.country, district),
+            None => write!(f, "{}, {}", self.name, self.country)
+        }
+    }
+}
+impl Place {
+    pub fn get_district(&self) -> Option<&String> {
+        let admins = [&self.admin1, &self.admin2, &self.admin3, &self.admin4];
+        let present_admins: Vec<&String> = admins.iter().filter_map(|field| field.as_ref()).collect();
+
+        match present_admins.len() {
+            0 => None,
+            1 => Some(present_admins[0]),
+            _ => Some(present_admins[present_admins.len() - 2])
+        }
+    }
+
+    pub fn info(&self) -> String {
+        format!("{} [lat: {}, lon: {}]", &self.name, &self.latitude, &self.longitude)
     }
 }
 
@@ -39,10 +61,8 @@ pub enum ApiError {
 
 #[derive(Deserialize, Debug)]
 struct GeoResult {
-    #[serde(rename = "results", default)]
+    #[serde(alias = "results", default)]
     places: Vec<Place>,
-    // #[serde(rename = "generationtime_ms")]
-    // generation_millis: f32,
 }
 
 #[derive(Deserialize, Debug, Clone)]

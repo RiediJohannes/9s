@@ -28,7 +28,7 @@ pub async fn temperature(ctx: Context<'_>,
     match geo_result {
         Ok(places) => {
             match select_place(ctx, &places, &place).await {
-                Some(place) => ctx.say(&place.name).await?,
+                Some(place) => ctx.say(place.info()).await?,
                 None => ctx.say("Could not find a matching place").await?,
             };
         }
@@ -47,8 +47,8 @@ async fn select_place<'a>(ctx: Context<'_>, places: &'a [Place], search_term: &s
         return None;
     }
 
-    let only_first_is_exact_match: bool = places.get(1)?.name == search_term && places.get(2)?.name != search_term;
-    if places.len() == 1 || only_first_is_exact_match {
+    // vector has only one element or the first element matches exactly and the second already deviates from the search term
+    if places.len() == 1 || places.get(1)?.name == search_term && places.get(2)?.name != search_term {
         return places.first();
     }
 
