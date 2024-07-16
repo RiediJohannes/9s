@@ -73,8 +73,11 @@ async fn request_user_selection<'a>(ctx: Context<'_>, places: &'a [Place]) -> Op
     // send the question with the selection menu
     let reply = CreateReply::default()
         .content("Which one of these is the place you are looking for?")
-        .components(components);
-    ctx.send(reply).await.unwrap();
+        .components(components)
+        .ephemeral(true);
+    if (ctx.send(reply).await).is_err() {
+        return None;
+    }
 
     // react on the first interaction on the selection menu (with timeout)
     if let Some(interaction) = serenity::ComponentInteractionCollector::new(ctx.serenity_context())
@@ -88,8 +91,11 @@ async fn request_user_selection<'a>(ctx: Context<'_>, places: &'a [Place]) -> Op
             serenity::ComponentInteractionDataKind::StringSelect { values} => &values[0],
             _ => panic!("unexpected interaction data kind"),
         };
-
-        return places.get(selected_value.parse::<usize>().unwrap());
+        
+        let _ = interaction.create_response(ctx, serenity::CreateInteractionResponse::Acknowledge).await;
+        if let Ok(index) = selected_value.parse::<usize>() {
+            return places.get(index);
+        }
     }
 
     None
