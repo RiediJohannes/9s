@@ -10,6 +10,7 @@ pub struct Place {
     pub name: String,
     pub latitude: f64,
     pub longitude: f64,
+    #[serde(default)]
     pub elevation: f32,
     pub timezone: String,
     /// Alpha-2 country code
@@ -69,11 +70,11 @@ pub async fn query_place(name: &str) -> Result<Vec<Place>, ApiError> {
 
     match serde_json::from_str::<GeoResult>(&payload) {
         Ok(geo_result) => Ok(geo_result.places),
-        Err(_) => {
+        Err(e) => {
             // If it fails, attempt to parse as GeoError
             match serde_json::from_str::<ClimateApiError>(&payload) {
                 Ok(geo_error) => Err(ApiError::BadRequest { reason: geo_error.reason }),
-                Err(e) => Err(ApiError::Parsing(e)), // Return the error if both parsing attempts fail
+                Err(_) => Err(ApiError::Parsing(e)), // Return the error if both parsing attempts fail
             }
         }
     }

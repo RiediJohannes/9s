@@ -31,11 +31,11 @@ pub async fn get_current_temperature(place: &Place) -> Result<CurrentTemp, ApiEr
 
     match serde_json::from_str::<CurrentTempResult>(&payload) {
         Ok(current_temp_result) => Ok(current_temp_result.current),
-        Err(_) => {
+        Err(e) => {
             // If it fails, attempt to parse as ClimateApiError
             match serde_json::from_str::<ClimateApiError>(&payload) {
                 Ok(api_error) => Err(ApiError::BadRequest { reason: api_error.reason }),
-                Err(e) => Err(ApiError::Parsing(e)), // Return the error if both parsing attempts fail
+                Err(_) => Err(ApiError::Parsing(e)), // Return the error if both parsing attempts fail
             }
         }
     }
