@@ -2,6 +2,7 @@ use crate::{Context, Error, sources};
 use poise::{serenity_prelude as serenity, CreateReply};
 use sources::geocoding;
 use sources::geocoding::Place;
+use sources::climate_forecast as forecast;
 use poise::serenity_prelude::CreateSelectMenuKind;
 use serenity::CreateSelectMenuOption as MenuOption;
 
@@ -27,15 +28,22 @@ pub async fn temperature(ctx: Context<'_>,
 
     match geo_result {
         Ok(places) => {
-            match select_place(ctx, &places, &place).await {
-                Some(place) => ctx.say(place.info()).await?,
-                None => ctx.say("Could not find a matching place").await?,
-            };
-        }
-        Err(e) => {
-            ctx.say(format!("Oh no, an error occurred! {}", e)).await?;
-        }
-    }
+            if places.is_empty() {
+                ctx.say(format!("Could not find a matching place for `{}`", &place)).await?
+            } else {
+                match select_place(ctx, &places, &place).await {
+                    Some(place) => {
+                        let data = forecast::get_current_temperature(place).await?;
+                        let msg = format!("The current temperature in `{}` is `{}°C`",
+                            place.name, data.temperature_2m);
+                        ctx.say(msg).await?
+                    },
+                    None => ctx.say("Place selection was cancelled").await?,
+                }
+            }
+        },
+        Err(e) => return Err(Box::new(e))
+    };
 
     Ok(())
 }

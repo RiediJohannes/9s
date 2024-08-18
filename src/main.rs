@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 mod commands;
 mod sources;
 
@@ -6,6 +8,7 @@ use std::time::Duration;
 use poise::{PrefixFrameworkOptions, serenity_prelude as serenity};
 use serenity::GatewayIntents;
 
+#[derive(Debug)]
 struct UserData {} // User data, which is stored and accessible in all command invocations
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, UserData, Error>;
@@ -29,6 +32,7 @@ async fn main() {
                 commands::climate::age(),
                 commands::climate::temperature(),
             ],
+            on_error: |err| Box::pin(on_error(err)),
             ..Default::default()
         })
         .setup(|ctx, _ready, framework| {
@@ -64,4 +68,12 @@ You can edit your message to the bot and the bot will edit its response.",
 
     poise::builtins::help(ctx, command.as_deref(), config).await?;
     Ok(())
+}
+
+async fn on_error(error: poise::FrameworkError<'_, UserData, Error>) {
+    println!("{:?}", error);
+
+    if let poise::FrameworkError::Command {error: e, ctx, .. } = error {
+        let _ = ctx.say(format!("Oh no, an error occurred! {}", e)).await;
+    }
 }

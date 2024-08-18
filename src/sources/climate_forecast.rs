@@ -11,13 +11,13 @@ struct CurrentTempResult {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-struct CurrentTemp {
-    time: String,
-    temperature_2m: f32,
+pub struct CurrentTemp {
+    pub time: String,
+    pub temperature_2m: f32,
 }
 
 
-pub async fn get_current_temperature(place: Place) -> Result<CurrentTemp, ApiError> {
+pub async fn get_current_temperature(place: &Place) -> Result<CurrentTemp, ApiError> {
     let params = [
         ("latitude", place.latitude.to_string()),
         ("longitude", place.longitude.to_string()),
