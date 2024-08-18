@@ -74,15 +74,18 @@ async fn on_error(error: poise::FrameworkError<'_, UserData, Error>) {
     println!("{:?}", error);
 
     if let poise::FrameworkError::Command {error: e, ctx, .. } = error {
+        let command_error = format!("Oh no, an error occurred!\n{}", e);
         // if the error was issued by a slash command, only show the error message to the author
         if ctx.prefix() == "/" {
             let _ = ctx.send(
                 CreateReply::default()
-                    .content(format!("Oh no, an error occurred! {}", e))
+                    .content(command_error)
                     .ephemeral(true)
             ).await;
         } else {
-            let _ = ctx.say(format!("Oh no, an error occurred! {}", e)).await;
+            let _ = ctx.say(command_error).await;
         }
+    } else {
+        let _ = poise::builtins::on_error(error).await;
     }
 }
