@@ -5,7 +5,7 @@ mod sources;
 
 use std::sync::Arc;
 use std::time::Duration;
-use poise::{PrefixFrameworkOptions, serenity_prelude as serenity};
+use poise::{serenity_prelude as serenity, CreateReply, PrefixFrameworkOptions};
 use serenity::GatewayIntents;
 
 #[derive(Debug)]
@@ -74,6 +74,15 @@ async fn on_error(error: poise::FrameworkError<'_, UserData, Error>) {
     println!("{:?}", error);
 
     if let poise::FrameworkError::Command {error: e, ctx, .. } = error {
-        let _ = ctx.say(format!("Oh no, an error occurred! {}", e)).await;
+        // if the error was issued by a slash command, only show the error message to the author
+        if ctx.prefix() == "/" {
+            let _ = ctx.send(
+                CreateReply::default()
+                    .content(format!("Oh no, an error occurred! {}", e))
+                    .ephemeral(true)
+            ).await;
+        } else {
+            let _ = ctx.say(format!("Oh no, an error occurred! {}", e)).await;
+        }
     }
 }
