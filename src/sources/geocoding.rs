@@ -22,9 +22,17 @@ pub struct Place {
 }
 impl fmt::Display for Place {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        const COUNTRY_LETTERS_OFFSET: u32 = ('🇦' as u32) - ('a' as u32);
+        // offset the alpha-2 country codes to get the "regional indicator symbols" (country flags) in unicode
+        let country: String = self.country
+            .to_lowercase().chars()
+            .map(|c| char::from_u32((c as u32) + COUNTRY_LETTERS_OFFSET)
+                .unwrap_or(c.to_ascii_uppercase()))
+            .collect();
+
         match self.get_district() {
-            Some(district) => write!(f, "{}, {}, {}", self.name, self.country, district),
-            None => write!(f, "{}, {}", self.name, self.country)
+            Some(district) => write!(f, "{} | {}, {}", country, self.name, district),
+            None => write!(f, "{} | {}", country, self.name)
         }
     }
 }

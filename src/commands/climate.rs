@@ -67,7 +67,8 @@ async fn request_user_selection<'a>(ctx: Context<'_>, places: &'a [Place]) -> Op
     const INTERACTION_ID: &str = "place_selection";
 
     let options: Vec<MenuOption> = places.iter().enumerate()
-        .map(|(idx, p)| MenuOption::new(p.to_string(), idx.to_string())).collect();
+        .map(|(idx, p)| MenuOption::new(p.to_string(), idx.to_string()))
+        .collect();
 
     let components = vec![
         serenity::CreateActionRow::SelectMenu(
