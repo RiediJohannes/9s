@@ -34,8 +34,8 @@ pub async fn temperature(ctx: Context<'_>,
                 match select_place(ctx, &places, &place).await {
                     Some(place) => {
                         let data = forecast::get_current_temperature(place).await?;
-                        let msg = format!("The current temperature in `{}` is `{}°C`",
-                            place.name, data.temperature_2m);
+                        let msg = format!("The current temperature in **{}** is **`{}°C`** _(last updated: <t:{}:R>)_",
+                            place.name, data.temperature_2m, data.epoch);
                         ctx.say(msg).await?
                     },
                     None => ctx.say("Place selection was cancelled").await?,

@@ -12,7 +12,8 @@ struct CurrentTempResult {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct CurrentTemp {
-    pub time: String,
+    #[serde(rename = "time")]
+    pub epoch: u32,
     pub temperature_2m: f32,
 }
 
@@ -22,7 +23,7 @@ pub async fn get_current_temperature(place: &Place) -> Result<CurrentTemp, ApiEr
         ("latitude", place.latitude.to_string()),
         ("longitude", place.longitude.to_string()),
         ("current", "temperature_2m".to_string()),
-        ("timezone", "Europe/Vienna".to_string()),
+        ("timeformat", "unixtime".to_string()),
     ];
     let url = reqwest::Url::parse_with_params(BASE_URL, &params)?;
 
