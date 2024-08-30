@@ -15,7 +15,7 @@ pub async fn age(ctx: Context<'_>,
     let u = user.as_ref().unwrap_or_else(|| ctx.author());
     let response = format!("{}'s account was created at {}", u.name, u.created_at());
 
-    ctx.say(response).await?;
+    ctx.reply(response).await?;
     Ok(())
 }
 
@@ -26,25 +26,26 @@ pub async fn temperature(ctx: Context<'_>,
 
     let geo_result = geocoding::query_place(&place).await;
 
-    match geo_result {
+    let response: String = match geo_result {
         Ok(places) => {
             if places.is_empty() {
-                ctx.say(format!("Could not find a matching place for `{}`", &place)).await?
+                format!("Could not find a matching place for `{}`", &place)
             } else {
                 match select_place(ctx, &places, &place).await {
                     Some(place) => {
                         let data = forecast::get_current_temperature(place).await?;
                         let msg = format!("The current temperature in **{}** is **`{}°C`** _(last updated: <t:{}:R>)_",
                             place.name, data.temperature_2m, data.epoch);
-                        ctx.say(msg).await?
+                        msg
                     },
-                    None => ctx.say("Place selection was cancelled").await?,
+                    None => "Place selection was cancelled".to_string(),
                 }
             }
         },
         Err(e) => return Err(Box::new(e))
     };
 
+    ctx.reply(response).await?;
     Ok(())
 }
 
@@ -80,11 +81,11 @@ async fn request_user_selection<'a>(ctx: Context<'_>, places: &'a [Place]) -> Op
     ];
 
     // send the question with the selection menu
-    let reply = CreateReply::default()
+    let place_selection = CreateReply::default()
         .content("Which one of these is the place you are looking for?")
         .components(components)
         .ephemeral(true);
-    if (ctx.send(reply).await).is_err() {
+    if (ctx.send(place_selection).await).is_err() {
         return None;
     }
 
@@ -100,7 +101,8 @@ async fn request_user_selection<'a>(ctx: Context<'_>, places: &'a [Place]) -> Op
             serenity::ComponentInteractionDataKind::StringSelect { values} => &values[0],
             _ => panic!("unexpected interaction data kind"),
         };
-        
+
+        // acknowledge the interaction
         let _ = interaction.create_response(ctx, serenity::CreateInteractionResponse::Acknowledge).await;
         if let Ok(index) = selected_value.parse::<usize>() {
             return places.get(index);

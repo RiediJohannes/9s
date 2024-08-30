@@ -71,21 +71,23 @@ You can edit your message to the bot and the bot will edit its response.",
 }
 
 async fn on_error(error: poise::FrameworkError<'_, UserData, Error>) {
-    println!("{:?}", error);
+    println!("{:#?}", &error);
 
-    if let poise::FrameworkError::Command {error: e, ctx, .. } = error {
-        let command_error = format!("Oh no, an error occurred!\n{}", e);
-        // if the error was issued by a slash command, only show the error message to the author
-        if ctx.prefix() == "/" {
+    match error {
+        poise::FrameworkError::Command {error: e, ctx, .. } => {
+            let command_error = format!("Hold up, something went wrong.\n{}", e);
             let _ = ctx.send(
                 CreateReply::default()
                     .content(command_error)
+                    .reply(true)
                     .ephemeral(true)
             ).await;
-        } else {
-            let _ = ctx.say(command_error).await;
+        },
+        poise::FrameworkError::UnknownCommand {msg, ctx, .. } => {         
+            let _ = msg.reply(&ctx.http, "Sorry, I don't know this command.").await;
+        },
+        _ => {
+            let _ = poise::builtins::on_error(error).await;
         }
-    } else {
-        let _ = poise::builtins::on_error(error).await;
     }
 }
