@@ -25,5 +25,10 @@ pub struct ClimateApiError {
 
 pub struct Coordinates {
     pub latitude: f64,
-    pub longitude: f64,
+    pub longitude: f64
+}
+impl Coordinates {
+    pub fn new(latitude: f64, longitude: f64) -> Coordinates {
+        Coordinates {latitude, longitude}
+    }
 }

@@ -3,16 +3,16 @@ use std::fmt;
 use super::types::*;
 
 
-const BASE_URL: &str = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=10&addressdetails=1";
-
+const BASE_URL: &str = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=10&\
+                        addressdetails=1&namedetails=1&extratags=1";
 
 #[derive(Deserialize, Debug, Clone)]
 #[allow(dead_code)]
 pub struct Place {
     #[serde(rename = "place_id")]
     pub id: i64,
-    pub lat: f64,
-    pub lon: f64,
+    pub lat: String,
+    pub lon: String,
     pub category: String,
     #[serde(rename = "namedetails")]
     pub name: PlaceName,
@@ -55,9 +55,9 @@ pub struct Address {
     pub continent: Option<String>,
 
     #[serde(rename = "iso3166_2_lvl4")]
-    pub iso3166_l4: String,
+    pub iso3166_l4: Option<String>,
     #[serde(rename = "iso3166_2_lvl6")]
-    pub iso3166_l6: String,
+    pub iso3166_l6: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -77,7 +77,7 @@ pub struct Extratags {
     pub website: Option<String>,
     #[serde(default)]
     pub capital: Option<bool>,
-    pub population: Option<i32>,
+    pub population: Option<String>,
     //pub population_date: Option<String>,
 }
 
@@ -93,9 +93,12 @@ pub struct NominatimErrorDetails {
 }
 
 
-impl From<&Place> for Coordinates {
-    fn from(place: &Place) -> Coordinates {
-        Coordinates { longitude: place.lon, latitude: place.lat }
+impl From<&Place> for Option<Coordinates> {
+    fn from(place: &Place) -> Option<Coordinates> {
+        match (place.lat.parse::<f64>(), place.lon.parse::<f64>()) {
+            (Ok(lat), Ok(lon)) => Some(Coordinates::new(lat, lon)),
+            _ => None,
+        }
     }
 }
 impl fmt::Display for Place {

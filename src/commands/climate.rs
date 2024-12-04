@@ -3,6 +3,7 @@ use poise::{serenity_prelude as serenity, CreateReply};
 use sources::nominatim;
 use sources::nominatim::Place;
 use sources::climate_forecast as forecast;
+use sources::types::*;
 use poise::serenity_prelude::{CreateSelectMenuKind};
 use serenity::CreateSelectMenuOption as MenuOption;
 
@@ -61,10 +62,20 @@ pub enum Selection<T> {
 }
 
 async fn get_current_temperature(place: &Place) -> Result<String, Error> {
-    let data = forecast::get_current_temperature(place.into()).await?;
-    let msg = format!("The current temperature in **{}** is **`{}°C`** _(last updated: <t:{}:R>)_",
-                      place.name.local, data.temperature_2m, data.epoch);
-    Ok(msg)
+    let maybe_coordinates: Option<Coordinates> = place.into();
+
+    match maybe_coordinates {
+        Some(coordinates) => {
+            let data = forecast::get_current_temperature(coordinates).await?;
+            let msg = format!("The current temperature in **{}** is **`{}°C`** _(last updated: <t:{}:R>)_",
+                              place.name.local, data.temperature_2m, data.epoch);
+            //TODO Add Display for name to be name.local
+            Ok(msg)
+        }
+        None => {
+            todo!("Create custom error type and return it here.")
+        }
+    }
 }
 
 // If first element matches the search term exactly and the second element does not, take the first one. Else, show the full list to pick from.

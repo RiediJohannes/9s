@@ -6,7 +6,6 @@ mod sources;
 use std::sync::Arc;
 use std::time::Duration;
 use poise::{serenity_prelude as serenity, CreateReply, PrefixFrameworkOptions};
-use poise::serenity_prelude::prelude::TypeMapKey;
 use serenity::GatewayIntents;
 
 // User data, which is stored and accessible in all command invocations
