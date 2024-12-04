@@ -21,7 +21,7 @@ pub struct Place {
     pub address: Address,
     #[serde(rename = "display_name")]
     pub full_name: String,
-    pub extratags: Extratags,
+    pub extratags: Option<Extratags>,
     pub place_rank: i16,
     pub importance: f32,
 }
@@ -69,6 +69,11 @@ pub struct PlaceName {
     #[serde(rename = "name:en")]
     pub name_en: Option<String>,
 }
+impl fmt::Display for PlaceName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.local)
+    }
+}
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Extratags {
@@ -78,7 +83,7 @@ pub struct Extratags {
     #[serde(default)]
     pub capital: Option<bool>,
     pub population: Option<String>,
-    //pub population_date: Option<String>,
+    pub population_date: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -111,7 +116,7 @@ impl fmt::Display for Place {
                 .unwrap_or(c.to_ascii_uppercase()))
             .collect();
 
-        write!(f, "{} | {}", country_letters, self.name.local)
+        write!(f, "{} | {}", country_letters, self.name)
         //write!(f, "{} | {}, {}", country_letters, self.name.local, self.address.district)
     }
 }

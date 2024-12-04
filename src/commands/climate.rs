@@ -68,8 +68,7 @@ async fn get_current_temperature(place: &Place) -> Result<String, Error> {
         Some(coordinates) => {
             let data = forecast::get_current_temperature(coordinates).await?;
             let msg = format!("The current temperature in **{}** is **`{}°C`** _(last updated: <t:{}:R>)_",
-                              place.name.local, data.temperature_2m, data.epoch);
-            //TODO Add Display for name to be name.local
+                              place.name, data.temperature_2m, data.epoch);
             Ok(msg)
         }
         None => {
@@ -85,7 +84,7 @@ async fn select_place<'a>(ctx: Context<'_>, places: &'a [Place], search_term: &s
     }
 
     // vector has only one element or only one that matches the search term exactly
-    let exact_matches: Vec<&Place> = places.iter().filter(|&item| item.name.local == search_term).collect();
+    let exact_matches: Vec<&Place> = places.iter().filter(|&item| item.name.to_string() == search_term).collect();
     if exact_matches.len() == 1 {
         return Selection::Unique(exact_matches.first().unwrap());
     }
