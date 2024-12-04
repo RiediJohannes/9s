@@ -24,7 +24,7 @@ pub async fn temperature(ctx: Context<'_>,
                          #[description = "Name of a place"] place: String,
 ) -> Result<(), Error> {
     // look up the requested place
-    let geo_result = nominatim::query_place(&place).await;
+    let geo_result = nominatim::query_place(&ctx.data().http_client, &place).await;
 
     // unwrap the geocoding response
     let places = match geo_result {

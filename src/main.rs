@@ -6,10 +6,14 @@ mod sources;
 use std::sync::Arc;
 use std::time::Duration;
 use poise::{serenity_prelude as serenity, CreateReply, PrefixFrameworkOptions};
+use poise::serenity_prelude::prelude::TypeMapKey;
 use serenity::GatewayIntents;
 
+// User data, which is stored and accessible in all command invocations
 #[derive(Debug)]
-struct UserData {} // User data, which is stored and accessible in all command invocations
+struct UserData {
+    pub http_client: reqwest::Client,
+}
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, UserData, Error>;
 
@@ -18,6 +22,11 @@ type Context<'a> = poise::Context<'a, UserData, Error>;
 async fn main() {
     let token = std::env::var("DISCORD_TOKEN").expect("ENV_VAR 'DISCORD_TOKEN' could not be located!");
     let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
+
+    let http_client = reqwest::Client::builder()
+        .user_agent("RiediJohannes/discord-bot-9s")
+        .build()
+        .expect("Failed to create HTTP client for future API requests.");
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
@@ -40,17 +49,19 @@ async fn main() {
                 // poise::builtins::register_globally(ctx, &framework.options().commands).await?;
                 poise::builtins::register_in_guild(ctx, &framework.options().commands,
                                                    serenity::GuildId::from(239525762003238912)).await?;
-                Ok(UserData {})
+                Ok(UserData {
+                    http_client,
+                })
             })
         })
         .build();
 
-    let client = serenity::ClientBuilder::new(token, intents)
+    let mut discord_client = serenity::ClientBuilder::new(token, intents)
         .framework(framework)
-        .await;
+        .await
+        .expect("Failed to construct discord API client.");
 
-    client.expect("Failed to construct discord API client.").start()
-        .await.unwrap();
+    discord_client.start().await.unwrap();
 }
 
 /// Show an overview of all commands
