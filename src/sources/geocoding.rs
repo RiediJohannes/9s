@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use std::fmt;
-use super::types::{ApiError, ClimateApiError};
+use super::types::*;
 
 const BASE_URL: &str = "https://geocoding-api.open-meteo.com/v1/search?count=10&language=de&format=json";
 
@@ -35,6 +35,11 @@ impl fmt::Display for Place {
             Some(district) => write!(f, "{} | {}, {}", country, self.name, district),
             None => write!(f, "{} | {}", country, self.name)
         }
+    }
+}
+impl From<&Place> for Coordinates {
+    fn from(place: &Place) -> Coordinates {
+        Coordinates { longitude: place.longitude, latitude: place.latitude }
     }
 }
 impl Place {

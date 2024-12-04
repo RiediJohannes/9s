@@ -22,3 +22,8 @@ pub enum ApiError {
 pub struct ClimateApiError {
     pub reason: String,
 }
+
+pub struct Coordinates {
+    pub latitude: f64,
+    pub longitude: f64,
+}

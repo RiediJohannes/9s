@@ -1,7 +1,7 @@
 use crate::{Context, Error, sources};
 use poise::{serenity_prelude as serenity, CreateReply};
-use sources::geocoding;
-use sources::geocoding::Place;
+use sources::nominatim;
+use sources::nominatim::Place;
 use sources::climate_forecast as forecast;
 use poise::serenity_prelude::{CreateSelectMenuKind};
 use serenity::CreateSelectMenuOption as MenuOption;
@@ -24,7 +24,7 @@ pub async fn temperature(ctx: Context<'_>,
                          #[description = "Name of a place"] place: String,
 ) -> Result<(), Error> {
     // look up the requested place
-    let geo_result = geocoding::query_place(&place).await;
+    let geo_result = nominatim::query_place(&place).await;
 
     // unwrap the geocoding response
     let places = match geo_result {
@@ -61,9 +61,9 @@ pub enum Selection<T> {
 }
 
 async fn get_current_temperature(place: &Place) -> Result<String, Error> {
-    let data = forecast::get_current_temperature(place).await?;
+    let data = forecast::get_current_temperature(place.into()).await?;
     let msg = format!("The current temperature in **{}** is **`{}°C`** _(last updated: <t:{}:R>)_",
-                      place.name, data.temperature_2m, data.epoch);
+                      place.name.local, data.temperature_2m, data.epoch);
     Ok(msg)
 }
 
@@ -74,7 +74,7 @@ async fn select_place<'a>(ctx: Context<'_>, places: &'a [Place], search_term: &s
     }
 
     // vector has only one element or only one that matches the search term exactly
-    let exact_matches: Vec<&Place> = places.iter().filter(|&item| item.name == search_term).collect();
+    let exact_matches: Vec<&Place> = places.iter().filter(|&item| item.name.local == search_term).collect();
     if exact_matches.len() == 1 {
         return Selection::Unique(exact_matches.first().unwrap());
     }

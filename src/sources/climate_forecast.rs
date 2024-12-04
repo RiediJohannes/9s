@@ -1,6 +1,5 @@
 use serde::Deserialize;
-use super::geocoding::Place;
-use super::types::{ApiError, ClimateApiError};
+use super::types::{ApiError, ClimateApiError, Coordinates};
 
 const BASE_URL: &str = "https://api.open-meteo.com/v1/forecast";
 
@@ -18,10 +17,10 @@ pub struct CurrentTemp {
 }
 
 
-pub async fn get_current_temperature(place: &Place) -> Result<CurrentTemp, ApiError> {
+pub async fn get_current_temperature(point: Coordinates) -> Result<CurrentTemp, ApiError> {
     let params = [
-        ("latitude", place.latitude.to_string()),
-        ("longitude", place.longitude.to_string()),
+        ("latitude", point.latitude.to_string()),
+        ("longitude", point.longitude.to_string()),
         ("current", "temperature_2m".to_string()),
         ("timeformat", "unixtime".to_string()),
     ];

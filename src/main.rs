@@ -49,7 +49,8 @@ async fn main() {
         .framework(framework)
         .await;
 
-    client.unwrap().start().await.unwrap();
+    client.expect("Failed to construct discord API client.").start()
+        .await.unwrap();
 }
 
 /// Show an overview of all commands
