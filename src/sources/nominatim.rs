@@ -5,7 +5,9 @@ use super::types::*;
 
 
 const BASE_URL: &str = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=10&\
-                        addressdetails=1&namedetails=1&extratags=1";
+                        addressdetails=1&namedetails=1&extratags=1&\
+                        featureType=settlement&\
+                        viewbox=55.030541,5.324132,45.850230,17.435780";
 
 #[derive(Deserialize, Clone)]
 #[allow(dead_code)]
@@ -25,14 +27,19 @@ pub struct Place {
     pub extratags: Option<Extratags>,
     pub place_rank: i16,
     pub importance: f32,
+
+    expected_name: Option<String>
 }
 impl Place {
-    pub fn address(&self) -> String {
-        self.address.summary()
+    pub fn set_expected_name(&mut self, name: String) {
+        self.expected_name = Some(name);
     }
-    
-    pub fn info(&self) -> String {
-        format!("{} [lat: {}, lon: {}]", &self.name, &self.lat, &self.lon)
+
+    pub fn has_unexpected_name(&self) -> bool {
+        match self.expected_name.as_ref() {
+            Some(expected) => expected != &self.name.to_string(),
+            None => true
+        }
     }
 }
 impl fmt::Display for Place {
@@ -50,7 +57,15 @@ impl fmt::Display for Place {
             None => "??".to_string()
         };
 
-        write!(f, "{} | {}", country_letters, self.address.summary())
+        // if the expected place name is not its default name, add it in parentheses
+        let summary = if self.has_unexpected_name() {
+            let replacement = format!("{} ({})", self.name, self.expected_name.clone().unwrap());
+            self.address.summary().replacen(&self.name.to_string(), &replacement,1)
+        } else {
+            self.address.summary()
+        };
+
+        write!(f, "{} | {}", country_letters, summary)
     }
 }
 impl fmt::Debug for Place {
@@ -221,7 +236,13 @@ pub async fn query_place(client: &reqwest::Client, name: &str) -> Result<Vec<Pla
     let payload = response.text().await?;
 
     match serde_json::from_str::<Vec<Place>>(&payload) {
-        Ok(place_list) => Ok(place_list),
+        Ok(mut place_list) => {
+            for place in place_list.iter_mut() {
+                place.expected_name = Some(name.to_string());
+            }
+
+            Ok(place_list)
+        },
         Err(e) => {
             // If it fails, attempt to parse as GeoError
             match serde_json::from_str::<NominatimError>(&payload) {

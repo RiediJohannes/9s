@@ -6,6 +6,7 @@ use sources::climate_forecast as forecast;
 use sources::types::*;
 use poise::serenity_prelude::{CreateSelectMenuKind};
 use serenity::CreateSelectMenuOption as MenuOption;
+use crate::sources::climate_forecast::CurrentTemp;
 
 /// Displays your or another user's account creation date
 #[poise::command(slash_command, prefix_command, hide_in_help)]
@@ -37,13 +38,13 @@ pub async fn temperature(ctx: Context<'_>,
         ctx.reply(format!("Could not find a matching place for `{}`", &place)).await?;
     } else {
         // select a place from the list
-        match select_place(ctx, &places, &place).await {
+        match select_place(ctx, &places).await {
             Selection::Unique(place) => {
-                let response = get_current_temperature(place).await?;
+                let response = create_temperature_response(place).await?;
                 ctx.reply(response).await?;
             },
             Selection::OneOfMany(place) => {
-                let response = get_current_temperature(place).await?;
+                let response = create_temperature_response(place).await?;
                 ctx.channel_id().say(ctx.http(), response).await?; // maybe add "(invoked by @author)"?
             },
             Selection::Aborted => {
@@ -61,15 +62,12 @@ pub enum Selection<T> {
     OneOfMany(T),
 }
 
-async fn get_current_temperature(place: &Place) -> Result<String, Error> {
+async fn get_current_temperature(place: &Place) -> Result<CurrentTemp,Error> {
     let maybe_coordinates: Option<Coordinates> = place.into();
 
     match maybe_coordinates {
         Some(coordinates) => {
-            let data = forecast::get_current_temperature(coordinates).await?;
-            let msg = format!("The current temperature in **{}** is **`{}°C`** _(last updated: <t:{}:R>)_",
-                              place.name, data.temperature_2m, data.epoch);
-            Ok(msg)
+            Ok(forecast::get_current_temperature(coordinates).await?)
         }
         None => {
             todo!("Create custom error type and return it here.")
@@ -77,16 +75,22 @@ async fn get_current_temperature(place: &Place) -> Result<String, Error> {
     }
 }
 
+async fn create_temperature_response(place: &Place) -> Result<String,Error> {
+    let data = get_current_temperature(place).await?;
+
+    let message = format!("The current temperature in **{}** is **`{}°C`** _(last updated: <t:{}:R>)_",
+                                place.name, data.temperature_2m, data.epoch);
+    Ok(message)
+}
+
 // If first element matches the search term exactly and the second element does not, take the first one. Else, show the full list to pick from.
-async fn select_place<'a>(ctx: Context<'_>, places: &'a [Place], search_term: &str) -> Selection<&'a Place> {
+async fn select_place<'a>(ctx: Context<'_>, places: &'a [Place]) -> Selection<&'a Place> {
     if places.is_empty() {
         return Selection::Aborted;
     }
 
-    // vector has only one element or only one that matches the search term exactly
-    let exact_matches: Vec<&Place> = places.iter().filter(|&item| item.name.to_string() == search_term).collect();
-    if exact_matches.len() == 1 {
-        return Selection::Unique(exact_matches.first().unwrap());
+    if places.len() == 1 {
+        return Selection::Unique(&places[0]);
     }
 
     request_user_selection(ctx, places).await
