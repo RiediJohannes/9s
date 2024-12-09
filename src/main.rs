@@ -7,15 +7,32 @@ use std::sync::Arc;
 use std::time::Duration;
 use poise::{serenity_prelude as serenity, CreateReply, PrefixFrameworkOptions};
 use serenity::GatewayIntents;
+use thiserror::Error;
+
+type Context<'a> = poise::Context<'a, UserData, Error>;
 
 // User data, which is stored and accessible in all command invocations
 #[derive(Debug)]
 struct UserData {
     pub http_client: reqwest::Client,
 }
-type Error = Box<dyn std::error::Error + Send + Sync>;
-type Context<'a> = poise::Context<'a, UserData, Error>;
 
+// custom error type used throughout the project
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("Framework error: {0}")]
+    FrameworkError(#[from] serenity::Error),
+
+    #[error("Error in API request: {0}")]
+    ApiError(#[from] sources::types::ApiError),
+
+    #[error("Unexpected error occurred: {reason:?}")]
+    Unexpected {
+        reason: String,
+    },
+}
+
+// type Error = crate::Error;
 
 #[tokio::main]
 async fn main() {
@@ -98,6 +115,7 @@ async fn on_error(error: poise::FrameworkError<'_, UserData, Error>) {
         poise::FrameworkError::UnknownCommand {msg, ctx, .. } => {         
             let _ = msg.reply(&ctx.http, "Sorry, I don't know this command.").await;
         },
+        // use defaults for all other error types
         _ => {
             let _ = poise::builtins::on_error(error).await;
         }

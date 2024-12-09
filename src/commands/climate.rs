@@ -47,7 +47,10 @@ pub async fn temperature(ctx: Context<'_>,
                 ctx.channel_id().say(ctx.http(), response).await?; // maybe add "(invoked by @author)"?
             },
             Selection::Aborted => {
-                ctx.channel_id().say(ctx.http(), "Place selection was cancelled".to_string()).await?;
+                ctx.channel_id().say(ctx.http(), "Place selection has timed out".to_string()).await?;
+            },
+            Selection::Failed(error) => {
+                return Err(error)
             },
         }
     }
@@ -56,9 +59,10 @@ pub async fn temperature(ctx: Context<'_>,
 }
 
 pub enum Selection<T> {
-    Aborted,
     Unique(T),
     OneOfMany(T),
+    Aborted,
+    Failed(Error),
 }
 
 
@@ -81,7 +85,7 @@ async fn create_temperature_response(client: &reqwest::Client, place: &Place) ->
 // If first element matches the search term exactly and the second element does not, take the first one. Else, show the full list to pick from.
 async fn select_place<'a>(ctx: Context<'_>, places: &'a [Place]) -> Selection<&'a Place> {
     if places.is_empty() {
-        return Selection::Aborted;
+        return Selection::Failed(Error::Unexpected {reason: "Received an empty set of place options.".to_string()});
     }
 
     if places.len() == 1 {
@@ -95,7 +99,15 @@ async fn request_user_selection<'a>(ctx: Context<'_>, places: &'a [Place]) -> Se
     const INTERACTION_ID: &str = "place_selection";
 
     let options: Vec<MenuOption> = places.iter().enumerate()
-        .map(|(idx, p)| MenuOption::new(p.to_string(), idx.to_string()))
+        .map(|(idx, p)| {
+            let mut place_string = p.to_string();
+            // discord limits the length of a menu option to 100 characters
+            if place_string.len() > 100 {
+                place_string.truncate(97);
+                place_string.push_str("...");
+            }
+            MenuOption::new(place_string, idx.to_string())
+        })
         .collect();
 
     // create select place prompt with the selection menu
@@ -116,8 +128,8 @@ async fn request_user_selection<'a>(ctx: Context<'_>, places: &'a [Place]) -> Se
             .reply(true)
     };
 
-    if (ctx.send(place_selection).await).is_err() {
-        return Selection::Aborted;
+    if let Err(e) = ctx.send(place_selection).await {
+        return Selection::Failed(e.into());
     }
 
     // react on the first interaction on the selection menu (with timeout)
@@ -144,5 +156,6 @@ async fn request_user_selection<'a>(ctx: Context<'_>, places: &'a [Place]) -> Se
         };
     }
 
+    // only reached if the interaction collector reaches its timeout
     Selection::Aborted
 }
