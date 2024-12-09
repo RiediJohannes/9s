@@ -6,7 +6,6 @@ use sources::climate_forecast as forecast;
 use sources::types::*;
 use poise::serenity_prelude::{CreateSelectMenuKind};
 use serenity::CreateSelectMenuOption as MenuOption;
-use crate::sources::climate_forecast::CurrentTemp;
 
 /// Displays your or another user's account creation date
 #[poise::command(slash_command, prefix_command, hide_in_help)]
@@ -40,11 +39,11 @@ pub async fn temperature(ctx: Context<'_>,
         // select a place from the list
         match select_place(ctx, &places).await {
             Selection::Unique(place) => {
-                let response = create_temperature_response(place).await?;
+                let response = create_temperature_response(&ctx.data().http_client, place).await?;
                 ctx.reply(response).await?;
             },
             Selection::OneOfMany(place) => {
-                let response = create_temperature_response(place).await?;
+                let response = create_temperature_response(&ctx.data().http_client, place).await?;
                 ctx.channel_id().say(ctx.http(), response).await?; // maybe add "(invoked by @author)"?
             },
             Selection::Aborted => {
@@ -62,25 +61,21 @@ pub enum Selection<T> {
     OneOfMany(T),
 }
 
-async fn get_current_temperature(place: &Place) -> Result<CurrentTemp,Error> {
+
+async fn create_temperature_response(client: &reqwest::Client, place: &Place) -> Result<String,Error> {
     let maybe_coordinates: Option<Coordinates> = place.into();
 
     match maybe_coordinates {
         Some(coordinates) => {
-            Ok(forecast::get_current_temperature(coordinates).await?)
+            let data = forecast::get_current_temperature(client, coordinates).await?;
+            let message = format!("The current temperature in **{}** is **`{}°C`** _(last updated: <t:{}:R>)_",
+                                  place.name, data.temperature_2m, data.epoch);
+            Ok(message)
         }
         None => {
             todo!("Create custom error type and return it here.")
         }
     }
-}
-
-async fn create_temperature_response(place: &Place) -> Result<String,Error> {
-    let data = get_current_temperature(place).await?;
-
-    let message = format!("The current temperature in **{}** is **`{}°C`** _(last updated: <t:{}:R>)_",
-                                place.name, data.temperature_2m, data.epoch);
-    Ok(message)
 }
 
 // If first element matches the search term exactly and the second element does not, take the first one. Else, show the full list to pick from.

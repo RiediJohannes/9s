@@ -37,7 +37,8 @@ pub struct TemperatureDataPoint {
 }
 
 
-pub async fn get_temperature_series(place: &Place, start_date: Timestamp, end_date: Timestamp)
+pub async fn get_temperature_series(client: &reqwest::Client, place: &Place,
+                                    start_date: Timestamp, end_date: Timestamp)
     -> Result<Vec<TemperatureDataPoint>, ApiError>
 {
     let params = [
@@ -50,7 +51,7 @@ pub async fn get_temperature_series(place: &Place, start_date: Timestamp, end_da
     ];
     let url = reqwest::Url::parse_with_params(BASE_URL, &params)?;
 
-    let response = reqwest::get(url).await?;
+    let response = client.get(url).send().await?;
     let payload = response.text().await?;
 
     match serde_json::from_str::<HistoricalTemperature>(&payload) {

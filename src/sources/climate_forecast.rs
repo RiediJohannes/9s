@@ -17,7 +17,9 @@ pub struct CurrentTemp {
 }
 
 
-pub async fn get_current_temperature(point: Coordinates) -> Result<CurrentTemp, ApiError> {
+pub async fn get_current_temperature(client: &reqwest::Client, point: Coordinates)
+    -> Result<CurrentTemp, ApiError> 
+{
     let params = [
         ("latitude", point.latitude.to_string()),
         ("longitude", point.longitude.to_string()),
@@ -26,7 +28,7 @@ pub async fn get_current_temperature(point: Coordinates) -> Result<CurrentTemp, 
     ];
     let url = reqwest::Url::parse_with_params(BASE_URL, &params)?;
 
-    let response = reqwest::get(url).await?;
+    let response = client.get(url).send().await?;
     let payload = response.text().await?;
 
     match serde_json::from_str::<CurrentTempResult>(&payload) {

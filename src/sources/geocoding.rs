@@ -66,11 +66,11 @@ struct GeoResult {
 }
 
 
-pub async fn query_place(name: &str) -> Result<Vec<Place>, ApiError> {
+pub async fn query_place(client: &reqwest::Client, name: &str) -> Result<Vec<Place>, ApiError> {
     let parameters = format!("&name={name}", name = name);
     let url = format!("{}{}", BASE_URL, parameters);
 
-    let response = reqwest::get(&url).await?;
+    let response = client.get(url).send().await?;
     let payload = response.text().await?;
 
     match serde_json::from_str::<GeoResult>(&payload) {
