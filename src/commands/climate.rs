@@ -4,7 +4,7 @@ use sources::nominatim;
 use sources::nominatim::Place;
 use sources::climate_forecast as forecast;
 use sources::types::*;
-use poise::serenity_prelude::{CreateSelectMenuKind};
+use poise::serenity_prelude::{CreateSelectMenuKind, Mention};
 use serenity::CreateSelectMenuOption as MenuOption;
 
 /// Displays your or another user's account creation date
@@ -30,7 +30,7 @@ pub async fn temperature(ctx: Context<'_>,
     // unwrap the geocoding response
     let places = match geo_result {
         Ok(place_list) => place_list,
-        Err(e) => return Err(e.into()) // Err(Box::new(e))
+        Err(e) => return Err(e.into())
     };
 
     if places.is_empty() {
@@ -43,7 +43,10 @@ pub async fn temperature(ctx: Context<'_>,
                 ctx.reply(response).await?;
             },
             Selection::OneOfMany(place) => {
-                let response = create_temperature_response(&ctx.data().http_client, place).await?;
+                let mut response = create_temperature_response(&ctx.data().http_client, place).await?;
+                // since this response will not be formatted as a reply to a slash command, 
+                // mention the user who invoked this command
+                response = format!("{}\n\\- invoked by {}", response, Mention::User(ctx.author().id));
                 ctx.channel_id().say(ctx.http(), response).await?; // maybe add "(invoked by @author)"?
             },
             Selection::Aborted => {

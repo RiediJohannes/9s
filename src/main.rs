@@ -32,8 +32,6 @@ pub enum Error {
     },
 }
 
-// type Error = crate::Error;
-
 #[tokio::main]
 async fn main() {
     let token = std::env::var("DISCORD_TOKEN").expect("ENV_VAR 'DISCORD_TOKEN' could not be located!");
