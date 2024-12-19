@@ -20,7 +20,7 @@ pub struct Place {
     #[serde(rename = "namedetails")]
     pub name: PlaceName,
     #[serde(rename = "addresstype")]
-    pub address_type: String,
+    pub address_type: AddressLevel,
     pub address: Address,
     #[serde(rename = "display_name")]
     pub full_name: String,
@@ -41,6 +41,23 @@ impl Place {
             None => true
         }
     }
+
+    pub fn address_details(&self) -> String {
+        let address = &self.address;
+
+        let hierarchy = [
+            address.neighbourhood(),
+            address.hamlet(),
+            address.district(),
+            address.municipality(),
+            address.region(),
+        ];
+
+        hierarchy.iter()
+            .filter_map(|opt| opt.as_deref()) // filter out Nones and dereference Somes
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
 }
 impl fmt::Display for Place {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -60,9 +77,9 @@ impl fmt::Display for Place {
         // if the expected place name is not its default name, add it in parentheses
         let summary = if self.has_unexpected_name() {
             let replacement = format!("{} ({})", self.name, self.expected_name.clone().unwrap());
-            self.address.summary().replacen(&self.name.to_string(), &replacement,1)
+            self.address_details().replacen(&self.name.to_string(), &replacement, 1)
         } else {
-            self.address.summary()
+            self.address_details()
         };
 
         write!(f, "{} | {}", country_letters, summary)
@@ -111,22 +128,7 @@ pub struct Address {
     #[serde(rename = "iso3166_2_lvl6")]
     pub iso3166_l6: Option<String>,
 }
-impl Address {
-    pub fn summary(&self) -> String {
-        let hierarchy = [
-            self.hamlet(),
-            self.neighbourhood(),
-            self.district(),
-            self.municipality(),
-            self.region(),
-        ];
-
-        hierarchy.iter()
-            .filter_map(|opt| opt.as_deref()) // filter out Nones and dereference Somes
-            .collect::<Vec<_>>()
-            .join(", ")
-    }
-    
+impl Address {    
     pub fn neighbourhood(&self) -> Option<String> {
         let neighbourhood_levels = [
             self.neighbourhood.as_ref(),
@@ -179,6 +181,24 @@ impl Address {
 
         somes_as_string(&region_levels)
     }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub enum AddressLevel {
+    #[serde(alias = "neighbourhood", alias = "quarter", alias = "allotments")]
+    Neighbourhood,
+    #[serde(alias = "city_district", alias = "borough", alias = "subdivision", alias = "suburb")]
+    District,
+    #[serde(alias = "hamlet", alias = "isolated_dwelling", alias = "croft")]
+    Hamlet,
+    #[serde(alias = "village", alias = "city", alias = "town", alias = "municipality", alias = "locality")]
+    Municipality,
+    #[serde(alias = "region", alias = "state", alias = "state_district", alias = "county")]
+    Region,
+    #[serde(alias = "country")]
+    Country,
+    #[serde(untagged)]
+    Other(String)
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -238,6 +258,7 @@ pub async fn query_place(client: &reqwest::Client, name: &str) -> Result<Vec<Pla
     match serde_json::from_str::<Vec<Place>>(&payload) {
         Ok(mut place_list) => {
             for place in place_list.iter_mut() {
+                println!("{:?}", place.address_type);
                 place.expected_name = Some(name.to_string());
             }
 
