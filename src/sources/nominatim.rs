@@ -2,6 +2,7 @@ use serde::Deserialize;
 use std::fmt;
 use std::fmt::Debug;
 use super::types::*;
+use AddressLevel::*;
 
 
 const BASE_URL: &str = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=10&\
@@ -43,27 +44,35 @@ impl Place {
     }
 
     pub fn address_details(&self) -> String {
-        let address = &self.address;
-
-        let hierarchy = [
-            address.neighbourhood(),
-            address.hamlet(),
-            address.district(),
-            address.municipality(),
-            address.region(),
-        ];
-
-        hierarchy.iter()
-            .filter_map(|opt| opt.as_deref()) // filter out Nones and dereference Somes
+        AddressLevel::HIERARCHY.iter()
+            .map(|level| self.address.get_address_level(level))
+            .filter_map(|opt| opt.to_owned()) // filter out Nones and dereference Somes
             .collect::<Vec<_>>()
+            .concat()
             .join(", ")
     }
-}
-impl fmt::Display for Place {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+
+    pub fn address_summary(&self) -> String {
+        self.address_type.related_address_levels().iter()
+            .map(|level| self.address.get_address_level(level))
+            .filter_map(|option| { // filter out Nones but take the first string of Somes
+                if let Some(list) = option {
+                    if let Some(first) = list.first() { // only takes the first string to keep it short
+                        return Some(first.to_string());
+                    }
+                }
+
+                None
+            })
+            .collect::<Vec<String>>()
+            .join(", ")
+    }
+
+    pub fn country_indicator(&self) -> String {
         const COUNTRY_LETTERS_OFFSET: u32 = ('🇦' as u32) - ('a' as u32);
-        
-        let country_letters = match self.address.country_code.as_deref() {
+        const COUNTRY_FALLBACK: &str = "??";
+
+        match self.address.country_code.as_deref() {
             Some(code) => {
                 // offset the alpha-2 country codes to get the "regional indicator symbols" (country flags) in Unicode
                 code.to_lowercase().chars()
@@ -71,8 +80,13 @@ impl fmt::Display for Place {
                         .unwrap_or(c.to_ascii_uppercase()))
                     .collect()
             }
-            None => "??".to_string()
-        };
+            None => COUNTRY_FALLBACK.to_string()
+        }
+    }
+}
+impl fmt::Display for Place {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let country_letters = self.country_indicator();
 
         // if the expected place name is not its default name, add it in parentheses
         let summary = if self.has_unexpected_name() {
@@ -115,9 +129,11 @@ pub struct Address {
     quarter: Option<String>,
 
     county: Option<String>,
-    region: Option<String>,
-    state: Option<String>,
     state_district: Option<String>,
+    //region: Option<String>,
+
+    state: Option<String>,
+    province: Option<String>,
 
     pub country: Option<String>,
     pub country_code: Option<String>,
@@ -128,39 +144,39 @@ pub struct Address {
     #[serde(rename = "iso3166_2_lvl6")]
     pub iso3166_l6: Option<String>,
 }
-impl Address {    
-    pub fn neighbourhood(&self) -> Option<String> {
+impl Address {
+    pub fn neighbourhood(&self) -> Option<Vec<String>> {
         let neighbourhood_levels = [
             self.neighbourhood.as_ref(),
             self.allotments.as_ref(),
             self.quarter.as_ref(),
         ];
-    
-        somes_as_string(&neighbourhood_levels)
+
+        collect_somes(&neighbourhood_levels)
     }
 
-    pub fn district(&self) -> Option<String> {
+    pub fn district(&self) -> Option<Vec<String>> {
         let district_levels = [
             self.city_district.as_ref(),
             self.suburb.as_ref(),
             self.subdivision.as_ref(),
             self.borough.as_ref(),
         ];
-        
-        somes_as_string(&district_levels)
+
+        collect_somes(&district_levels)
     }
 
-    pub fn hamlet(&self) -> Option<String> {
+    pub fn hamlet(&self) -> Option<Vec<String>> {
         let hamlet_levels = [
             self.hamlet.as_ref(),
             self.croft.as_ref(),
             self.isolated_dwelling.as_ref(),
         ];
 
-        somes_as_string(&hamlet_levels)
+        collect_somes(&hamlet_levels)
     }
 
-    pub fn municipality(&self) -> Option<String> {
+    pub fn municipality(&self) -> Option<Vec<String>> {
         let municipality_levels = [
             self.village.as_ref(),
             self.town.as_ref(),
@@ -168,22 +184,44 @@ impl Address {
             self.city.as_ref(),
         ];
 
-        somes_as_string(&municipality_levels)
+        collect_somes(&municipality_levels)
     }
 
-    pub fn region(&self) -> Option<String> {
-        let region_levels = [
+    pub fn county(&self) -> Option<Vec<String>> {
+        let county_levels = [
             self.county.as_ref(),
-            self.region.as_ref(),
             self.state_district.as_ref(),
-            self.state.as_ref(),
         ];
 
-        somes_as_string(&region_levels)
+        collect_somes(&county_levels)
+    }
+
+    pub fn state(&self) -> Option<Vec<String>> {
+        let state_levels = [
+            self.state.as_ref(),
+            self.province.as_ref(),
+        ];
+
+        collect_somes(&state_levels)
+    }
+
+    #[inline]
+    pub fn get_address_level(&self, level: &AddressLevel) -> Option<Vec<String>> {
+        match level {
+            Neighbourhood => self.neighbourhood(),
+            District => self.district(),
+            Hamlet => self.hamlet(),
+            Municipality => self.municipality(),
+            County => self.county(),
+            State => self.state(),
+            Country => self.country.as_ref().map(|c| vec![c.to_string()]),
+            Continent => self.continent.as_ref().map(|c| vec![c.to_string()]),
+            Other(_) => None,
+        }
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq, Hash)]
 pub enum AddressLevel {
     #[serde(alias = "neighbourhood", alias = "quarter", alias = "allotments")]
     Neighbourhood,
@@ -193,12 +231,33 @@ pub enum AddressLevel {
     Hamlet,
     #[serde(alias = "village", alias = "city", alias = "town", alias = "municipality", alias = "locality")]
     Municipality,
-    #[serde(alias = "region", alias = "state", alias = "state_district", alias = "county")]
-    Region,
+    #[serde(alias = "state_district", alias = "county")]
+    County,
+    #[serde(alias = "state", alias = "province")] // region is purposely left out
+    State,
     #[serde(alias = "country")]
     Country,
+    #[serde(alias = "continent")]
+    Continent,
     #[serde(untagged)]
     Other(String)
+}
+impl AddressLevel {
+    const HIERARCHY: [AddressLevel; 6] = [Neighbourhood, District, Hamlet, Municipality, County, State];
+
+    pub fn related_address_levels(&self) -> &'static [AddressLevel] {
+        match self {
+            Neighbourhood => &[Neighbourhood, District, Municipality, State],
+            District => &[District, Municipality, State],
+            Hamlet => &[Hamlet, Municipality, County, State],
+            Municipality => &[Municipality, County, State],
+            County => &[County, State],
+            State => &[State, Country],
+            Country => &[Country, Continent],
+            Continent => &[Continent],
+            _ => &[]
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -258,7 +317,6 @@ pub async fn query_place(client: &reqwest::Client, name: &str) -> Result<Vec<Pla
     match serde_json::from_str::<Vec<Place>>(&payload) {
         Ok(mut place_list) => {
             for place in place_list.iter_mut() {
-                println!("{:?}", place.address_type);
                 place.expected_name = Some(name.to_string());
             }
 
@@ -274,16 +332,17 @@ pub async fn query_place(client: &reqwest::Client, name: &str) -> Result<Vec<Pla
     }
 }
 
-fn somes_as_string<'a, I>(s: I) -> Option<String>
+fn collect_somes<'a, I>(s: I) -> Option<Vec<String>>
     where I: IntoIterator<Item = &'a Option<&'a String>>
 {
-    let regions = s.into_iter()
+    let string_list = s.into_iter()
         .filter(|f| f.is_some())
-        .map(|s| s.unwrap().as_str())
-        .collect::<Vec<&str>>();
+        .map(|s| s.unwrap().to_string())
+        .collect::<Vec<String>>();
 
-    match regions[..] {
-        [] => None,
-        _ => Some(regions.join(", "))
+    if string_list.is_empty() {
+        None
+    } else {
+        Some(string_list)
     }
 }

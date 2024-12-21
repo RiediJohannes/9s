@@ -76,7 +76,7 @@ async fn create_temperature_response(client: &reqwest::Client, place: &Place) ->
         Some(coordinates) => {
             let data = forecast::get_current_temperature(client, coordinates).await?;
             let message = format!("The current temperature in **{}** is **`{}°C`** _(last updated: <t:{}:R>)_",
-                                  place.name, data.temperature_2m, data.epoch);
+                                  place.address_summary(), data.temperature_2m, data.epoch);
             Ok(message)
         }
         None => {
