@@ -104,6 +104,14 @@ impl fmt::Debug for Place {
         write!(f, "{} [lat: {}, lon: {}]", &self.name, &self.lat, &self.lon)
     }
 }
+impl From<&Place> for Option<Coordinates> {
+    fn from(place: &Place) -> Option<Coordinates> {
+        match (place.lat.parse::<f64>(), place.lon.parse::<f64>()) {
+            (Ok(lat), Ok(lon)) => Some(Coordinates::new(lat, lon)),
+            _ => None,
+        }
+    }
+}
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Address {
@@ -297,15 +305,7 @@ pub struct NominatimErrorDetails {
     pub reason: String,
 }
 
-
-impl From<&Place> for Option<Coordinates> {
-    fn from(place: &Place) -> Option<Coordinates> {
-        match (place.lat.parse::<f64>(), place.lon.parse::<f64>()) {
-            (Ok(lat), Ok(lon)) => Some(Coordinates::new(lat, lon)),
-            _ => None,
-        }
-    }
-}
+// --------------------- functions --------------------
 
 pub async fn query_place(client: &reqwest::Client, name: &str) -> Result<Vec<Place>, ApiError> {
     let parameters = format!("&city={name}", name = name);

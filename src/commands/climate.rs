@@ -44,7 +44,7 @@ pub async fn temperature(ctx: Context<'_>,
             },
             Selection::OneOfMany(place) => {
                 let mut response = create_temperature_response(&ctx.data().http_client, place).await?;
-                // since this response will not be formatted as a reply to a slash command, 
+                // since this response will not be formatted as a reply to a slash command,
                 // mention the user who invoked this command
                 response = format!("{}\n\\- invoked by {}", response, Mention::User(ctx.author().id));
                 ctx.channel_id().say(ctx.http(), response).await?; // maybe add "(invoked by @author)"?
@@ -80,7 +80,10 @@ async fn create_temperature_response(client: &reqwest::Client, place: &Place) ->
             Ok(message)
         }
         None => {
-            todo!("Create custom error type and return it here.")
+            Err(Error::Unexpected {
+                reason: "Place contained malformed coordinates!".to_string(),
+                subject: Some(format!("Place: {:?}", place))
+            })
         }
     }
 }
@@ -88,7 +91,10 @@ async fn create_temperature_response(client: &reqwest::Client, place: &Place) ->
 // If first element matches the search term exactly and the second element does not, take the first one. Else, show the full list to pick from.
 async fn select_place<'a>(ctx: Context<'_>, places: &'a [Place]) -> Selection<&'a Place> {
     if places.is_empty() {
-        return Selection::Failed(Error::Unexpected {reason: "Received an empty set of place options.".to_string()});
+        return Selection::Failed(Error::Unexpected {
+            reason: "Received an empty set of place options.".to_string(),
+            subject: None
+        });
     }
 
     if places.len() == 1 {

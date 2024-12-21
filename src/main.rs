@@ -26,9 +26,10 @@ pub enum Error {
     #[error("Error in API request: {0}")]
     ApiError(#[from] sources::types::ApiError),
 
-    #[error("Unexpected error occurred: {reason:?}")]
+    #[error("Unexpected error occurred: {reason:?}\nsubject: {subject:?}")]
     Unexpected {
         reason: String,
+        subject: Option<String>
     },
 }
 
