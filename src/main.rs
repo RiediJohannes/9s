@@ -3,17 +3,19 @@
 mod commands;
 mod sources;
 
-use std::sync::Arc;
-use std::time::Duration;
+use log::*;
 use poise::{serenity_prelude as serenity, CreateReply, PrefixFrameworkOptions};
 use serenity::GatewayIntents;
+use std::sync::Arc;
+use std::time::Duration;
 use thiserror::Error;
 
-type Context<'a> = poise::Context<'a, UserData, Error>;
+
+type Context<'a> = poise::Context<'a, ApplicationState, Error>;
 
 // User data, which is stored and accessible in all command invocations
 #[derive(Debug)]
-struct UserData {
+struct ApplicationState {
     pub http_client: reqwest::Client,
 }
 
@@ -33,10 +35,11 @@ pub enum Error {
     },
 }
 
+
 #[tokio::main]
 async fn main() {
     env_logger::init();
-    
+
     let token = std::env::var("DISCORD_TOKEN").expect("ENV_VAR 'DISCORD_TOKEN' could not be located!");
     let app_id = std::env::var("APPLICATION_ID").expect("ENV_VAR 'APPLICATION_ID' could not be located!");
     let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
@@ -65,10 +68,30 @@ async fn main() {
         })
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
-                // poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                poise::builtins::register_in_guild(ctx, &framework.options().commands,
-                                                   serenity::GuildId::from(239525762003238912)).await?;
-                Ok(UserData {
+                poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+
+                // register slash commands in every test guild for immediate access
+                let guild_ids = std::env::var("TEST_GUILD_IDS")
+                    .map(|ids| ids
+                        .split(',')
+                        .filter_map(|id| match id.trim().parse() {
+                            Ok(id) => Some(id),
+                            Err(_) => {
+                                warn!("Failed to parse test guild id: {}", id);
+                                None
+                            },
+                        })
+                        .collect::<Vec<u64>>()
+                    )
+                    .unwrap_or_default();
+
+                for guild in guild_ids {
+                    poise::builtins::register_in_guild(ctx, &framework.options().commands,
+                                                       serenity::GuildId::from(guild)).await?;
+                }
+
+                // create shared state object available in every command invocation
+                Ok(ApplicationState {
                     http_client,
                 })
             })
@@ -101,7 +124,7 @@ You can edit your message to the bot and the bot will edit its response.",
     Ok(())
 }
 
-async fn on_error(error: poise::FrameworkError<'_, UserData, Error>) {
+async fn on_error(error: poise::FrameworkError<'_, ApplicationState, Error>) {
     println!("{:#?}", &error);
 
     match error {
