@@ -6,7 +6,6 @@ rust-version = "1.79"
 
 [dependencies]
 poise = "0.6.1"
-poise_macros = "0.6.1"
 reqwest = { version = "0.12.5", features = ["json"] }
 serde = "1.0.204"
 tokio = { version = "1.38.0", features = ["full"] }
@@ -15,3 +14,4 @@ thiserror = "1.0.61"
 url = "2.5.2"
 log = "0.4.22"
 env_logger = "0.11.6"
+cached = { version = "0.54.0", features = ["async"] }

@@ -3,12 +3,16 @@ use std::fmt;
 use std::fmt::Debug;
 use super::types::*;
 use AddressLevel::*;
+use cached::SizedCache;
+use cached::proc_macro::cached;
 
 
 const BASE_URL: &str = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=10&\
                         addressdetails=1&namedetails=1&extratags=1&\
                         featureType=settlement&\
                         viewbox=55.030541,5.324132,45.850230,17.435780";
+const CACHED_ITEMS: usize = 200;
+
 
 #[derive(Deserialize, Clone)]
 #[allow(dead_code)]
@@ -307,6 +311,13 @@ pub struct NominatimErrorDetails {
 
 // --------------------- functions --------------------
 
+// Cache up to 200 place requests and their responses (result = true -> only cache Ok variants)
+#[cached(
+    ty = "SizedCache<String, Vec<Place>>",
+    create = "{ SizedCache::with_size(CACHED_ITEMS) }",
+    convert = r#"{ name.to_string() }"#,
+    result = true
+)]
 pub async fn query_place(client: &reqwest::Client, name: &str) -> Result<Vec<Place>, ApiError> {
     let parameters = format!("&city={name}", name = name);
     let url = format!("{}{}", BASE_URL, parameters);

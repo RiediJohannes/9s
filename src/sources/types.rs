@@ -1,3 +1,4 @@
+use std::hash::Hash;
 use serde::Deserialize;
 use thiserror::Error;
 
@@ -23,6 +24,7 @@ pub struct ClimateApiError {
     pub reason: String,
 }
 
+#[derive(Clone)]
 pub struct Coordinates {
     pub latitude: f64,
     pub longitude: f64
@@ -30,5 +32,18 @@ pub struct Coordinates {
 impl Coordinates {
     pub fn new(latitude: f64, longitude: f64) -> Coordinates {
         Coordinates {latitude, longitude}
+    }
+}
+impl PartialEq for Coordinates {
+    fn eq(&self, other: &Self) -> bool {
+        // this is fine because we never do math with coordinates, we just use parsed string coordinates
+        self.latitude == other.latitude && self.longitude == other.longitude
+    }
+}
+impl Eq for Coordinates {} // marker interface to guarantee that PartialEq implementation is reflexive
+impl Hash for Coordinates {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.latitude.to_bits().hash(state);
+        self.longitude.to_bits().hash(state);
     }
 }

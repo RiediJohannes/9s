@@ -43,7 +43,7 @@ async fn main() {
 
     let http_client = reqwest::Client::builder()
         .user_agent(app_id)
-        .connection_verbose(true)
+        .connection_verbose(std::env::var("VERBOSE_LOGGING").map(|b| b.parse::<bool>().unwrap_or(false)).unwrap_or(false))
         .build()
         .expect("Failed to create HTTP client for future API requests.");
 

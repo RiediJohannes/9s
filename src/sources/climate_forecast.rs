@@ -1,8 +1,10 @@
+use cached::proc_macro::cached;
 use serde::Deserialize;
+use cached::TimedCache;
 use super::types::{ApiError, ClimateApiError, Coordinates};
 
 const BASE_URL: &str = "https://api.open-meteo.com/v1/forecast";
-
+const CACHE_TTL_SECONDS: u64 = 120;
 
 #[derive(Deserialize, Debug)]
 struct CurrentTempResult {
@@ -17,6 +19,12 @@ pub struct CurrentTemp {
 }
 
 
+#[cached(
+    ty = "TimedCache<Coordinates, CurrentTemp>",
+    create = "{ TimedCache::with_lifespan(CACHE_TTL_SECONDS) }",
+    convert = r#"{ point.clone() }"#,
+    result = true
+)]
 pub async fn get_current_temperature(client: &reqwest::Client, point: Coordinates)
     -> Result<CurrentTemp, ApiError> 
 {
