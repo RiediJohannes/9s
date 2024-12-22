@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use std::fmt;
-use super::types::*;
+use super::common::*;
 
 const BASE_URL: &str = "https://geocoding-api.open-meteo.com/v1/search?count=10&language=de&format=json";
 

@@ -1,11 +1,10 @@
+use super::common::*;
+use cached::proc_macro::cached;
+use cached::SizedCache;
 use serde::Deserialize;
 use std::fmt;
 use std::fmt::Debug;
-use super::types::*;
 use AddressLevel::*;
-use cached::SizedCache;
-use cached::proc_macro::cached;
-
 
 const BASE_URL: &str = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=10&\
                         addressdetails=1&namedetails=1&extratags=1&\
@@ -298,16 +297,24 @@ pub struct Extratags {
     pub population_date: Option<String>,
 }
 
+type NominatimResult = Vec<Place>;
+
 #[derive(Deserialize, Debug, Clone)]
 pub struct NominatimError {
     pub code: u16,
     pub message: String,
+}
+impl From<NominatimError> for ApiError {
+    fn from(nomi_error: NominatimError) -> Self {
+        ApiError::BadRequest { reason: nomi_error.message }
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct NominatimErrorDetails {
     pub reason: String,
 }
+
 
 // --------------------- functions --------------------
 
@@ -325,7 +332,7 @@ pub async fn query_place(client: &reqwest::Client, name: &str) -> Result<Vec<Pla
     let response = client.get(&url).send().await?;
     let payload = response.text().await?;
 
-    match serde_json::from_str::<Vec<Place>>(&payload) {
+    match serde_json::from_str::<NominatimResult>(&payload) {
         Ok(mut place_list) => {
             for place in place_list.iter_mut() {
                 place.expected_name = Some(name.to_string());
@@ -336,7 +343,7 @@ pub async fn query_place(client: &reqwest::Client, name: &str) -> Result<Vec<Pla
         Err(e) => {
             // If it fails, attempt to parse as GeoError
             match serde_json::from_str::<NominatimError>(&payload) {
-                Ok(nomi_error) => Err(ApiError::BadRequest { reason: nomi_error.message }),
+                Ok(nomi_error) => Err(nomi_error.into()),
                 Err(_) => Err(ApiError::Parsing(e)), // Return the error if both parsing attempts fail
             }
         }

@@ -3,7 +3,7 @@ use poise::{serenity_prelude as serenity, CreateReply};
 use sources::nominatim;
 use sources::nominatim::Place;
 use sources::climate_forecast as forecast;
-use sources::types::*;
+use sources::common::*;
 use poise::serenity_prelude::{CreateSelectMenuKind, Mention};
 use serenity::CreateSelectMenuOption as MenuOption;
 

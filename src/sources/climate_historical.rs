@@ -1,7 +1,8 @@
-use serde::Deserialize;
-use poise::serenity_prelude::Timestamp;
+use super::common::{ApiError, ClimateApiError};
 use super::geocoding::Place;
-use super::types::{ApiError, ClimateApiError};
+use crate::sources::common;
+use poise::serenity_prelude::Timestamp;
+use serde::Deserialize;
 
 const BASE_URL: &str = "https://archive-api.open-meteo.com/v1/archive";
 
@@ -35,6 +36,11 @@ pub struct TemperatureDataPoint {
     pub time: u32,
     pub value: f32,
 }
+impl From<HistoricalTemperature> for Vec<TemperatureDataPoint> {
+    fn from(historical_temp: HistoricalTemperature) -> Self {
+        historical_temp.series.flatten()
+    }
+}
 
 
 pub async fn get_temperature_series(client: &reqwest::Client, place: &Place,
@@ -49,19 +55,7 @@ pub async fn get_temperature_series(client: &reqwest::Client, place: &Place,
         ("end_date", end_date.date_naive().to_string()),
         ("timeformat", "unixtime".to_string()),
     ];
-    let url = reqwest::Url::parse_with_params(BASE_URL, &params)?;
 
-    let response = client.get(url).send().await?;
-    let payload = response.text().await?;
-
-    match serde_json::from_str::<HistoricalTemperature>(&payload) {
-        Ok(hist_temp) => Ok(hist_temp.series.flatten()),
-        Err(e) => {
-            // If it fails, attempt to parse as ClimateApiError
-            match serde_json::from_str::<ClimateApiError>(&payload) {
-                Ok(api_error) => Err(ApiError::BadRequest { reason: api_error.reason }),
-                Err(_) => Err(ApiError::Parsing(e)), // Return the error if both parsing attempts fail
-            }
-        }
-    }
+    common::query_api::<Vec<TemperatureDataPoint>, HistoricalTemperature, ClimateApiError>
+        (client, BASE_URL, params).await
 }

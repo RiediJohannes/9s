@@ -1,7 +1,8 @@
+use super::common::{ApiError, ClimateApiError, Coordinates};
+use crate::sources::common;
 use cached::proc_macro::cached;
-use serde::Deserialize;
 use cached::TimedCache;
-use super::types::{ApiError, ClimateApiError, Coordinates};
+use serde::Deserialize;
 
 const BASE_URL: &str = "https://api.open-meteo.com/v1/forecast";
 const CACHE_TTL_SECONDS: u64 = 120;
@@ -9,6 +10,11 @@ const CACHE_TTL_SECONDS: u64 = 120;
 #[derive(Deserialize, Debug)]
 struct CurrentTempResult {
     current: CurrentTemp,
+}
+impl From<CurrentTempResult> for CurrentTemp {
+    fn from(result: CurrentTempResult) -> Self {
+        result.current
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -34,19 +40,7 @@ pub async fn get_current_temperature(client: &reqwest::Client, point: Coordinate
         ("current", "temperature_2m".to_string()),
         ("timeformat", "unixtime".to_string()),
     ];
-    let url = reqwest::Url::parse_with_params(BASE_URL, &params)?;
 
-    let response = client.get(url).send().await?;
-    let payload = response.text().await?;
-
-    match serde_json::from_str::<CurrentTempResult>(&payload) {
-        Ok(current_temp_result) => Ok(current_temp_result.current),
-        Err(e) => {
-            // If it fails, attempt to parse as ClimateApiError
-            match serde_json::from_str::<ClimateApiError>(&payload) {
-                Ok(api_error) => Err(ApiError::BadRequest { reason: api_error.reason }),
-                Err(_) => Err(ApiError::Parsing(e)), // Return the error if both parsing attempts fail
-            }
-        }
-    }
+    common::query_api::<CurrentTemp, CurrentTempResult, ClimateApiError>
+        (client, BASE_URL, params).await
 }

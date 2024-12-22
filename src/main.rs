@@ -24,7 +24,7 @@ pub enum Error {
     FrameworkError(#[from] serenity::Error),
 
     #[error("Error in API request: {0}")]
-    ApiError(#[from] sources::types::ApiError),
+    ApiError(#[from] sources::common::ApiError),
 
     #[error("Unexpected error occurred: {reason:?}\nsubject: {subject:?}")]
     Unexpected {
