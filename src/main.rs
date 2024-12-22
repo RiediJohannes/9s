@@ -35,12 +35,15 @@ pub enum Error {
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+    
     let token = std::env::var("DISCORD_TOKEN").expect("ENV_VAR 'DISCORD_TOKEN' could not be located!");
     let app_id = std::env::var("APPLICATION_ID").expect("ENV_VAR 'APPLICATION_ID' could not be located!");
     let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
 
     let http_client = reqwest::Client::builder()
         .user_agent(app_id)
+        .connection_verbose(true)
         .build()
         .expect("Failed to create HTTP client for future API requests.");
 
