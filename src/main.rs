@@ -59,8 +59,8 @@ async fn main() {
                 ..Default::default()
             },
             commands: vec![
-                help(),
-                commands::climate::age(),
+                commands::general::help(),
+                commands::general::age(),
                 commands::climate::temperature(),
             ],
             on_error: |err| Box::pin(on_error(err)),
@@ -68,27 +68,7 @@ async fn main() {
         })
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
-                poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-
-                // register slash commands in every test guild for immediate access
-                let guild_ids = std::env::var("TEST_GUILD_IDS")
-                    .map(|ids| ids
-                        .split(',')
-                        .filter_map(|id| match id.trim().parse() {
-                            Ok(id) => Some(id),
-                            Err(_) => {
-                                warn!("Failed to parse test guild id: {}", id);
-                                None
-                            },
-                        })
-                        .collect::<Vec<u64>>()
-                    )
-                    .unwrap_or_default();
-
-                for guild in guild_ids {
-                    poise::builtins::register_in_guild(ctx, &framework.options().commands,
-                                                       serenity::GuildId::from(guild)).await?;
-                }
+                register_commands(ctx, framework).await?;
 
                 // create shared state object available in every command invocation
                 Ok(ApplicationState {
@@ -106,23 +86,6 @@ async fn main() {
     discord_client.start().await.unwrap();
 }
 
-/// Show an overview of all commands
-#[poise::command(prefix_command, track_edits, slash_command)]
-async fn help(
-    ctx: Context<'_>,
-    #[description = "Specific command to show help about"] command: Option<String>,
-) -> Result<(), Error> {
-
-    let config = poise::builtins::HelpConfiguration {
-        extra_text_at_bottom: "\
-Type ?help command for more info on a command.
-You can edit your message to the bot and the bot will edit its response.",
-        ..Default::default()
-    };
-
-    poise::builtins::help(ctx, command.as_deref(), config).await?;
-    Ok(())
-}
 
 async fn on_error(error: poise::FrameworkError<'_, ApplicationState, Error>) {
     println!("{:#?}", &error);
@@ -145,4 +108,32 @@ async fn on_error(error: poise::FrameworkError<'_, ApplicationState, Error>) {
             let _ = poise::builtins::on_error(error).await;
         }
     }
+}
+
+async fn register_commands(ctx: &poise::serenity_prelude::Context, framework: &poise::Framework<ApplicationState, Error>)
+    -> Result<(), Error>
+{
+    poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+
+    // register slash commands in every test guild for immediate access
+    let guild_ids = std::env::var("TEST_GUILD_IDS")
+        .map(|ids| ids
+            .split(',')
+            .filter_map(|id| match id.trim().parse() {
+                Ok(id) => Some(id),
+                Err(_) => {
+                    warn!("Failed to parse test guild id: {}", id);
+                    None
+                },
+            })
+            .collect::<Vec<u64>>()
+        )
+        .unwrap_or_default();
+
+    for guild in guild_ids {
+        poise::builtins::register_in_guild(ctx, &framework.options().commands,
+                                           serenity::GuildId::from(guild)).await?;
+    }
+    
+    Ok(())
 }
