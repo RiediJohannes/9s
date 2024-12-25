@@ -98,11 +98,8 @@ async fn request_user_selection<'a>(ctx: Context<'_>, places: &'a [Place]) -> Se
     let options: Vec<MenuOption> = places.iter().enumerate()
         .map(|(idx, p)| {
             let mut place_string = p.to_string();
-            // discord limits the length of a menu option to 100 characters
-            if place_string.len() > 100 {
-                place_string.truncate(97);
-                place_string.push_str("...");
-            }
+            // discord limits the length of a menu option to 100 characters            
+            truncate_ellipsis(&mut place_string, 100, "...");
             MenuOption::new(place_string, idx.to_string())
         })
         .collect();

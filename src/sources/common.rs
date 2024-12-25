@@ -89,3 +89,25 @@ where
         }
     }
 }
+
+
+pub fn truncate_utf8(s: &mut String, max_chars: usize) {
+    match s.char_indices().nth(max_chars) {
+        None => (),
+        Some((idx, _)) => {
+            s.truncate(idx);
+        }
+    }
+}
+
+pub fn truncate_ellipsis(s: &mut String, max_chars: usize, ellipsis: &str) {
+    let cut_off = max_chars - ellipsis.len();
+    
+    match s.char_indices().nth(cut_off) {
+        None => (),
+        Some((idx, _)) => {
+            s.truncate(idx);
+            s.push_str(ellipsis);
+        }
+    }
+}
