@@ -1,9 +1,10 @@
+use std::collections::HashMap;
 use super::common::*;
 use cached::proc_macro::cached;
 use cached::SizedCache;
 use serde::Deserialize;
 use std::fmt;
-use std::fmt::Debug;
+use codes_iso_639::part_1::LanguageCode;
 use AddressLevel::*;
 
 const BASE_URL: &str = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=10&\
@@ -234,21 +235,21 @@ impl Address {
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq, Hash)]
 pub enum AddressLevel {
-    #[serde(alias = "neighbourhood", alias = "quarter", alias = "allotments")]
+    #[serde(rename = "neighbourhood", alias = "quarter", alias = "allotments")]
     Neighbourhood,
-    #[serde(alias = "city_district", alias = "borough", alias = "subdivision", alias = "suburb")]
+    #[serde(rename = "city_district", alias = "borough", alias = "subdivision", alias = "suburb")]
     District,
-    #[serde(alias = "hamlet", alias = "isolated_dwelling", alias = "croft")]
+    #[serde(rename = "hamlet", alias = "isolated_dwelling", alias = "croft")]
     Hamlet,
-    #[serde(alias = "village", alias = "city", alias = "town", alias = "municipality", alias = "locality")]
+    #[serde(rename = "municipality", alias = "city", alias = "town", alias = "village", alias = "locality")]
     Municipality,
-    #[serde(alias = "state_district", alias = "county")]
+    #[serde(rename = "county", alias = "state_district")]
     County,
-    #[serde(alias = "state", alias = "province")] // region is purposely left out
+    #[serde(rename = "state", alias = "province")] // region is purposely left out
     State,
-    #[serde(alias = "country")]
+    #[serde(rename = "country")]
     Country,
-    #[serde(alias = "continent")]
+    #[serde(rename = "continent")]
     Continent,
     #[serde(untagged)]
     Other(String)
@@ -275,10 +276,23 @@ impl AddressLevel {
 pub struct PlaceName {
     #[serde(rename = "name")]
     pub local: String,
-    #[serde(rename = "name:de")]
-    pub name_de: Option<String>,
-    #[serde(rename = "name:en")]
-    pub name_en: Option<String>,
+
+    #[serde(flatten)]
+    global: HashMap<String, String>,
+}
+impl PlaceName {
+    const NAME_PREFIX: &'static str = "name:";
+    
+    pub fn get_lang_or(&self, lang: LanguageCode, default_lang: LanguageCode) -> Option<&String> {
+        let name_key = |code: &str| format!("{}{}", Self::NAME_PREFIX, code);
+        
+        self.global.get(name_key(lang.code()).as_str())
+            .or(self.global.get(name_key(default_lang.code()).as_str()))
+    }
+    
+    pub fn get_lang_or_default(&self, lang: LanguageCode) -> Option<&String> {
+        self.get_lang_or(lang, LanguageCode::En)
+    }
 }
 impl fmt::Display for PlaceName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
