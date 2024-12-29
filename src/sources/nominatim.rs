@@ -7,6 +7,7 @@ use std::fmt;
 use codes_iso_639::part_1::LanguageCode;
 use AddressLevel::*;
 
+
 const BASE_URL: &str = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=10&\
                         addressdetails=1&namedetails=1&extratags=1&\
                         featureType=settlement&\
@@ -32,21 +33,8 @@ pub struct Place {
     pub extratags: Option<Extratags>,
     pub place_rank: i16,
     pub importance: f32,
-
-    expected_name: Option<String>
 }
 impl Place {
-    pub fn set_expected_name(&mut self, name: String) {
-        self.expected_name = Some(name);
-    }
-
-    pub fn has_unexpected_name(&self) -> bool {
-        match self.expected_name.as_ref() {
-            Some(expected) => expected != &self.name.to_string(),
-            None => true
-        }
-    }
-
     pub fn address_details(&self) -> String {
         AddressLevel::HIERARCHY.iter()
             .map(|level| self.address.get_address_level(level))
@@ -92,10 +80,14 @@ impl fmt::Display for Place {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let country_letters = self.country_indicator();
 
-        // if the expected place name is not its default name, add it in parentheses
-        let summary = if self.has_unexpected_name() {
-            let replacement = format!("{} ({})", self.name, self.expected_name.clone().unwrap());
-            self.address_details().replacen(&self.name.to_string(), &replacement, 1)
+        // if the local place name differs from its name in the app language, add the latter in parentheses
+        let summary = if let Some(expected) = self.name.get_lang(crate::LANGUAGE) {
+            if !self.name.local.contains(expected) {
+                let replacement = format!("{} ({})", self.name, expected);
+                self.address_details().replacen(&self.name.to_string(), &replacement, 1)
+            } else {
+                self.address_details()
+            }
         } else {
             self.address_details()
         };
@@ -282,14 +274,17 @@ pub struct PlaceName {
 }
 impl PlaceName {
     const NAME_PREFIX: &'static str = "name:";
-    
-    pub fn get_lang_or(&self, lang: LanguageCode, default_lang: LanguageCode) -> Option<&String> {
+
+    pub fn get_lang(&self, lang: LanguageCode) -> Option<&String> {
         let name_key = |code: &str| format!("{}{}", Self::NAME_PREFIX, code);
-        
+
         self.global.get(name_key(lang.code()).as_str())
-            .or(self.global.get(name_key(default_lang.code()).as_str()))
     }
-    
+
+    pub fn get_lang_or(&self, lang: LanguageCode, default_lang: LanguageCode) -> Option<&String> {
+        self.get_lang(lang).or(self.get_lang(default_lang))
+    }
+
     pub fn get_lang_or_default(&self, lang: LanguageCode) -> Option<&String> {
         self.get_lang_or(lang, LanguageCode::En)
     }
@@ -305,7 +300,6 @@ pub struct Extratags {
     pub wikidata: Option<String>,
     pub wikipedia: Option<String>,
     pub website: Option<String>,
-    #[serde(default)]
     pub capital: Option<String>,
     pub population: Option<String>,
     pub population_date: Option<String>,
@@ -347,13 +341,7 @@ pub async fn query_place(client: &reqwest::Client, name: &str) -> Result<Vec<Pla
     let payload = response.text().await?;
 
     match serde_json::from_str::<NominatimResult>(&payload) {
-        Ok(mut place_list) => {
-            for place in place_list.iter_mut() {
-                place.expected_name = Some(name.to_string());
-            }
-
-            Ok(place_list)
-        },
+        Ok(place_list) => Ok(place_list),
         Err(e) => {
             // If it fails, attempt to parse as GeoError
             match serde_json::from_str::<NominatimError>(&payload) {

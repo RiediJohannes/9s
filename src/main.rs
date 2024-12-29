@@ -8,8 +8,11 @@ use poise::{serenity_prelude as serenity, CreateReply, PrefixFrameworkOptions};
 use serenity::GatewayIntents;
 use std::sync::Arc;
 use std::time::Duration;
+use codes_iso_639::part_1::LanguageCode;
 use thiserror::Error;
 
+
+const LANGUAGE: LanguageCode = LanguageCode::De; // sets the language for bot responses, place names etc.
 
 type Context<'a> = poise::Context<'a, ApplicationState, Error>;
 
