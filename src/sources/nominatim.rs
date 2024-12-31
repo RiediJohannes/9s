@@ -1,3 +1,4 @@
+use bot_macros::collect_fields;
 use std::collections::HashMap;
 use super::common::*;
 use cached::proc_macro::cached;
@@ -110,6 +111,14 @@ impl From<&Place> for Option<Coordinates> {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[collect_fields({
+   neighbourhood = [neighbourhood, allotments, quarter],
+   district = [city_district, suburb, subdivision, borough],
+   hamlet = [hamlet, croft, isolated_dwelling],
+   municipality = [village, town, municipality, city],
+   county = [county, state_district],
+   state = [state, province]
+})]
 pub struct Address {
     hamlet: Option<String>,
     croft: Option<String>,
@@ -149,66 +158,6 @@ pub struct Address {
     pub iso3166_l6: Option<String>,
 }
 impl Address {
-    pub fn neighbourhood(&self) -> Option<Vec<String>> {
-        let neighbourhood_levels = [
-            self.neighbourhood.as_ref(),
-            self.allotments.as_ref(),
-            self.quarter.as_ref(),
-        ];
-
-        collect_somes(&neighbourhood_levels)
-    }
-
-    pub fn district(&self) -> Option<Vec<String>> {
-        let district_levels = [
-            self.city_district.as_ref(),
-            self.suburb.as_ref(),
-            self.subdivision.as_ref(),
-            self.borough.as_ref(),
-        ];
-
-        collect_somes(&district_levels)
-    }
-
-    pub fn hamlet(&self) -> Option<Vec<String>> {
-        let hamlet_levels = [
-            self.hamlet.as_ref(),
-            self.croft.as_ref(),
-            self.isolated_dwelling.as_ref(),
-        ];
-
-        collect_somes(&hamlet_levels)
-    }
-
-    pub fn municipality(&self) -> Option<Vec<String>> {
-        let municipality_levels = [
-            self.village.as_ref(),
-            self.town.as_ref(),
-            self.municipality.as_ref(),
-            self.city.as_ref(),
-        ];
-
-        collect_somes(&municipality_levels)
-    }
-
-    pub fn county(&self) -> Option<Vec<String>> {
-        let county_levels = [
-            self.county.as_ref(),
-            self.state_district.as_ref(),
-        ];
-
-        collect_somes(&county_levels)
-    }
-
-    pub fn state(&self) -> Option<Vec<String>> {
-        let state_levels = [
-            self.state.as_ref(),
-            self.province.as_ref(),
-        ];
-
-        collect_somes(&state_levels)
-    }
-
     #[inline]
     pub fn get_address_level(&self, level: &AddressLevel) -> Option<Vec<String>> {
         match level {
@@ -349,20 +298,5 @@ pub async fn query_place(client: &reqwest::Client, name: &str) -> Result<Vec<Pla
                 Err(_) => Err(ApiError::Parsing(e)), // Return the error if both parsing attempts fail
             }
         }
-    }
-}
-
-fn collect_somes<'a, I>(s: I) -> Option<Vec<String>>
-    where I: IntoIterator<Item = &'a Option<&'a String>>
-{
-    let string_list = s.into_iter()
-        .filter(|f| f.is_some())
-        .map(|s| s.unwrap().to_string())
-        .collect::<Vec<String>>();
-
-    if string_list.is_empty() {
-        None
-    } else {
-        Some(string_list)
     }
 }

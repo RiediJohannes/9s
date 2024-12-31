@@ -6,6 +6,8 @@ version = 3
 name = "DiscordBot9S"
 version = "0.2.1"
 dependencies = [
+ "bot-macros",
+ "bot-utils",
  "cached",
  "codes-iso-639",
  "env_logger",
@@ -204,6 +206,20 @@ checksum = "3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71"
 dependencies = [
  "generic-array",
 ]
+
+[[package]]
+name = "bot-macros"
+version = "0.1.0"
+dependencies = [
+ "bot-utils",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.90",
+]
+
+[[package]]
+name = "bot-utils"
+version = "0.1.0"
 
 [[package]]
 name = "bstr"

@@ -5,6 +5,9 @@ edition = "2021"
 rust-version = "1.79"
 
 [dependencies]
+bot-macros = { path = "./lib/bot-macros" }
+bot-utils = { path = "./lib/bot-utils" }
+
 poise = "0.6.1"
 reqwest = { version = "0.12.5", features = ["json"] }
 serde = "1.0.204"
