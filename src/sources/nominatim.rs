@@ -81,18 +81,15 @@ impl Place {
 impl fmt::Display for Place {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let country_letters = self.country_indicator();
+        let mut summary = self.address_summary();
 
         // if the local place name differs from its name in the app language, add the latter in parentheses
-        let summary = if let Some(expected) = self.name.get_lang(crate::LANGUAGE) {
+        if let Some(expected) = self.name.get_lang(crate::LANGUAGE) {
             if !self.name.local.contains(expected) {
                 let replacement = format!("{} ({})", self.name, expected);
-                self.address_details().replacen(&self.name.to_string(), &replacement, 1)
-            } else {
-                self.address_details()
+                summary = summary.replacen(&self.name.to_string(), &replacement, 1);
             }
-        } else {
-            self.address_details()
-        };
+        }
 
         write!(f, "{} | {}", country_letters, summary)
     }
