@@ -1,11 +1,12 @@
-use bot_macros::collect_fields;
-use std::collections::HashMap;
 use super::common::*;
+use crate::sources::common;
+use bot_macros::collect_fields;
 use cached::proc_macro::cached;
 use cached::SizedCache;
-use serde::Deserialize;
-use std::fmt;
 use codes_iso_639::part_1::LanguageCode;
+use serde::Deserialize;
+use std::collections::HashMap;
+use std::fmt;
 use AddressLevel::*;
 
 
@@ -283,20 +284,8 @@ pub struct NominatimErrorDetails {
     result = true
 )]
 pub async fn query_place(client: &reqwest::Client, name: &str) -> Result<Vec<Place>, ApiError> {
-    let parameters = format!("&city={name}", name = name);
-    let url = format!("{}{}", BASE_URL, parameters);
+    let params = [("city", name.to_string())];
 
-    let response = client.get(&url).send().await?;
-    let payload = response.text().await?;
-
-    match serde_json::from_str::<NominatimResult>(&payload) {
-        Ok(place_list) => Ok(place_list),
-        Err(e) => {
-            // If it fails, attempt to parse as GeoError
-            match serde_json::from_str::<NominatimError>(&payload) {
-                Ok(nomi_error) => Err(nomi_error.into()),
-                Err(_) => Err(ApiError::Parsing(e)), // Return the error if both parsing attempts fail
-            }
-        }
-    }
+    common::query_api::<Vec<Place>, NominatimResult, ClimateApiError>
+        (client, BASE_URL, params).await
 }
