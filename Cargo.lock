@@ -11,9 +11,7 @@ dependencies = [
  "cached",
  "codes-iso-639",
  "env_logger",
- "fluent",
- "fluent-syntax",
- "intl-memoizer",
+ "fluent-bundle",
  "log",
  "poise",
  "reqwest 0.12.12",
@@ -688,16 +686,6 @@ checksum = "c936bfdafb507ebbf50b8074c54fa31c5be9a1e7e5f467dd659697041407d07c"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
-]
-
-[[package]]
-name = "fluent"
-version = "0.16.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb74634707bebd0ce645a981148e8fb8c7bccd4c33c652aeffd28bf2f96d555a"
-dependencies = [
- "fluent-bundle",
- "unic-langid",
 ]
 
 [[package]]

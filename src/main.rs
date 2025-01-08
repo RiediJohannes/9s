@@ -2,6 +2,7 @@
 
 mod commands;
 mod sources;
+mod localization;
 
 use log::*;
 use poise::{serenity_prelude as serenity, CreateReply, PrefixFrameworkOptions};
@@ -16,13 +17,13 @@ const LANGUAGE: LanguageCode = LanguageCode::De; // sets the language for bot re
 
 type Context<'a> = poise::Context<'a, ApplicationState, Error>;
 
-// User data, which is stored and accessible in all command invocations
+// application-scoped data, which is stored and accessible in all command invocations
 #[derive(Debug)]
 struct ApplicationState {
     pub http_client: reqwest::Client,
 }
 
-// custom error type used throughout the project
+// custom top-level error type used throughout the project
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("Framework error: {0}")]
