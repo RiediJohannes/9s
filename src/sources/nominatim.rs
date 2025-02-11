@@ -3,10 +3,10 @@ use crate::sources::common;
 use bot_macros::collect_fields;
 use cached::proc_macro::cached;
 use cached::SizedCache;
-use codes_iso_639::part_1::LanguageCode;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt;
+use fluent_templates::{langid, LanguageIdentifier};
 use AddressLevel::*;
 
 
@@ -222,18 +222,18 @@ pub struct PlaceName {
 impl PlaceName {
     const NAME_PREFIX: &'static str = "name:";
 
-    pub fn get_lang(&self, lang: LanguageCode) -> Option<&String> {
+    pub fn get_lang(&self, lang: LanguageIdentifier) -> Option<&String> {
         let name_key = |code: &str| format!("{}{}", Self::NAME_PREFIX, code);
 
-        self.global.get(name_key(lang.code()).as_str())
+        self.global.get(name_key(lang.language.as_str()).as_str())
     }
 
-    pub fn get_lang_or(&self, lang: LanguageCode, default_lang: LanguageCode) -> Option<&String> {
+    pub fn get_lang_or(&self, lang: LanguageIdentifier, default_lang: LanguageIdentifier) -> Option<&String> {
         self.get_lang(lang).or(self.get_lang(default_lang))
     }
 
-    pub fn get_lang_or_default(&self, lang: LanguageCode) -> Option<&String> {
-        self.get_lang_or(lang, LanguageCode::En)
+    pub fn get_lang_or_default(&self, lang: LanguageIdentifier) -> Option<&String> {
+        self.get_lang_or(lang, langid!("en"))
     }
 }
 impl fmt::Display for PlaceName {

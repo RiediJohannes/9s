@@ -2,7 +2,7 @@
 name = "DiscordBot9S"
 version = "0.2.1"
 edition = "2021"
-rust-version = "1.79"
+rust-version = "1.80"
 
 [dependencies]
 bot-macros = { path = "./lib/bot-macros" }
@@ -14,9 +14,9 @@ serde = "1.0"
 tokio = { version = "1.42.0", features = ["full"] }
 serde_json = "1.0"
 fluent-bundle = "^0.15"
+fluent-templates = "^0.13"
 thiserror = "2.0"
 url = "2.5"
 log = "0.4.22"
 env_logger = "0.11.6"
 cached = { version = "0.54.0", features = ["async"] }
-codes-iso-639 = "0.1.5"

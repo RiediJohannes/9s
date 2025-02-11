@@ -5,3 +5,7 @@ welcome = begrüßen
     .user-description = Der zu begrüßende Nutzer
     .message = nachricht
     .message-description = Die versendete Nachricht
+
+# error messages
+unknown-command = Dieses Kommando kenne ich leider nicht.
+unknown-error = Oje, da ist etwas schiefgelaufen.

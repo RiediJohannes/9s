@@ -2,18 +2,20 @@
 
 mod commands;
 mod sources;
-mod localization;
 
+use fluent_templates::langid;
+use fluent_templates::LanguageIdentifier;
 use log::*;
 use poise::{serenity_prelude as serenity, CreateReply, PrefixFrameworkOptions};
 use serenity::GatewayIntents;
 use std::sync::Arc;
 use std::time::Duration;
-use codes_iso_639::part_1::LanguageCode;
+use fluent_templates::Loader;
 use thiserror::Error;
 
 
-const LANGUAGE: LanguageCode = LanguageCode::De; // sets the language for bot responses, place names etc.
+// const LANGUAGE: LanguageCode = LanguageCode::De; // sets the language for bot responses, place names etc.
+const LANGUAGE: LanguageIdentifier = langid!("de"); // sets the language for bot responses, place names etc.
 
 type Context<'a> = poise::Context<'a, ApplicationState, Error>;
 
@@ -37,6 +39,17 @@ pub enum Error {
         reason: String,
         subject: Option<String>
     },
+}
+
+// setup text sources for fluent localizations
+fluent_templates::static_loader! {
+    static LOCALES = {
+        // The directory of localizations and fluent resources.
+        locales: "./locales",
+        fallback_language: "en-UK",
+        // A fluent resource that is shared with every locale.
+        // core_locales: "./locales/core.ftl",
+    };
 }
 
 
@@ -95,17 +108,16 @@ async fn on_error(error: poise::FrameworkError<'_, ApplicationState, Error>) {
     println!("{:#?}", &error);
 
     match error {
-        poise::FrameworkError::Command {error: e, ctx, .. } => {
-            let command_error = format!("Hold up, something went wrong.\n{}", e);
+        poise::FrameworkError::Command {ctx, .. } => {
             let _ = ctx.send(
                 CreateReply::default()
-                    .content(command_error)
+                    .content(LOCALES.lookup(&crate::LANGUAGE, "unknown-error"))
                     .reply(true)
                     .ephemeral(true)
             ).await;
         },
-        poise::FrameworkError::UnknownCommand {msg, ctx, .. } => {         
-            let _ = msg.reply(&ctx.http, "Sorry, I don't know this command.").await;
+        poise::FrameworkError::UnknownCommand {msg, ctx, .. } => {
+            let _ = msg.reply(&ctx.http, LOCALES.lookup(&crate::LANGUAGE, "unknown-command")).await;
         },
         // use defaults for all other error types
         _ => {
