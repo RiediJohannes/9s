@@ -2,17 +2,18 @@
 
 mod commands;
 mod sources;
+mod localization;
 
 use fluent_templates::langid;
 use fluent_templates::LanguageIdentifier;
+use fluent_templates::Loader;
+use localization::localize;
 use log::*;
 use poise::{serenity_prelude as serenity, CreateReply, PrefixFrameworkOptions};
 use serenity::GatewayIntents;
 use std::sync::Arc;
 use std::time::Duration;
-use fluent_templates::Loader;
 use thiserror::Error;
-
 
 // const LANGUAGE: LanguageCode = LanguageCode::De; // sets the language for bot responses, place names etc.
 const LANGUAGE: LanguageIdentifier = langid!("de"); // sets the language for bot responses, place names etc.
@@ -41,11 +42,11 @@ pub enum Error {
     },
 }
 
-// setup text sources for fluent localizations
+// set up text sources for fluent localizations
 fluent_templates::static_loader! {
     static LOCALES = {
         // The directory of localizations and fluent resources.
-        locales: "./locales",
+        locales: "./src/localization/locales",
         fallback_language: "en-UK",
         // A fluent resource that is shared with every locale.
         // core_locales: "./locales/core.ftl",
@@ -111,13 +112,13 @@ async fn on_error(error: poise::FrameworkError<'_, ApplicationState, Error>) {
         poise::FrameworkError::Command {ctx, .. } => {
             let _ = ctx.send(
                 CreateReply::default()
-                    .content(LOCALES.lookup(&crate::LANGUAGE, "unknown-error"))
+                    .content(localize!("unknown-error"))
                     .reply(true)
                     .ephemeral(true)
             ).await;
         },
         poise::FrameworkError::UnknownCommand {msg, ctx, .. } => {
-            let _ = msg.reply(&ctx.http, LOCALES.lookup(&crate::LANGUAGE, "unknown-command")).await;
+            let _ = msg.reply(&ctx.http, localize!("unknown-command")).await;
         },
         // use defaults for all other error types
         _ => {

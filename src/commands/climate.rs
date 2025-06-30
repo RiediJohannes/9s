@@ -1,12 +1,13 @@
-use crate::{Context, Error, sources};
+use fluent_templates::Loader;
+use crate::localization::localize;
+use crate::{sources, Context, Error};
+use poise::serenity_prelude::{CreateSelectMenuKind, Mention};
 use poise::{serenity_prelude as serenity, CreateReply};
-use sources::nominatim;
-use sources::nominatim::Place;
+use serenity::CreateSelectMenuOption as MenuOption;
 use sources::climate_forecast as forecast;
 use sources::common::*;
-use poise::serenity_prelude::{CreateSelectMenuKind, Mention};
-use serenity::CreateSelectMenuOption as MenuOption;
-
+use sources::nominatim;
+use sources::nominatim::Place;
 
 #[poise::command(slash_command, prefix_command, track_edits, aliases("temp"))]
 pub async fn temperature(ctx: Context<'_>,
@@ -35,10 +36,11 @@ pub async fn temperature(ctx: Context<'_>,
                 // since this response will not be formatted as a reply to a slash command,
                 // mention the user who invoked this command
                 response = format!("{}\n\\- invoked by {}", response, Mention::User(ctx.author().id));
-                ctx.channel_id().say(ctx.http(), response).await?; // maybe add "(invoked by @author)"?
+                // response = localize!("response-invoked-by", message: response, user_mention: Mention::User(ctx.author().id));
+                ctx.channel_id().say(ctx.http(), response).await?;
             },
             Selection::Aborted => {
-                ctx.channel_id().say(ctx.http(), "Place selection has timed out".to_string()).await?;
+                ctx.channel_id().say(ctx.http(), localize!("place-selection-timeout")).await?;
             },
             Selection::Failed(error) => {
                 return Err(error)
@@ -98,7 +100,7 @@ async fn request_user_selection<'a>(ctx: Context<'_>, places: &'a [Place]) -> Se
     let options: Vec<MenuOption> = places.iter().enumerate()
         .map(|(idx, p)| {
             let mut place_string = p.to_string();
-            // discord limits the length of a menu option to 100 characters            
+            // discord limits the length of a menu option to 100 characters
             truncate_ellipsis(&mut place_string, 100, "...");
             MenuOption::new(place_string, idx.to_string())
         })
@@ -116,7 +118,7 @@ async fn request_user_selection<'a>(ctx: Context<'_>, places: &'a [Place]) -> Se
         ];
 
         CreateReply::default()
-            .content("Which one of these is the place you are looking for?")
+            .content(localize!("place-selection-which-one"))
             .components(components)
             .ephemeral(true)
             .reply(true)
