@@ -11,7 +11,8 @@ place-not-found = Could not find a matching place for `{ $search-term }`
 
 temperature-current-success = The current temperature in **{ $place }** is **`{ $celcius }°C`** _(last updated: <t:{ $unix-timestamp }:R>)_
 
+# backslash before '-' is needed to escape the minus, otherwise discord sees it as an <ul>
 response-invoked-by =
     { $message }
-    - invoked by { $user_mention}
+    \- invoked by { $user_mention}
 

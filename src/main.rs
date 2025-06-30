@@ -4,10 +4,8 @@ mod commands;
 mod sources;
 mod localization;
 
-use fluent_templates::langid;
-use fluent_templates::LanguageIdentifier;
-use fluent_templates::Loader;
-use localization::localize;
+use fluent_templates::{langid, LanguageIdentifier};
+use localization::*;
 use log::*;
 use poise::{serenity_prelude as serenity, CreateReply, PrefixFrameworkOptions};
 use serenity::GatewayIntents;
@@ -15,7 +13,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use thiserror::Error;
 
-// const LANGUAGE: LanguageCode = LanguageCode::De; // sets the language for bot responses, place names etc.
 const LANGUAGE: LanguageIdentifier = langid!("de"); // sets the language for bot responses, place names etc.
 
 type Context<'a> = poise::Context<'a, ApplicationState, Error>;

@@ -1,5 +1,4 @@
-use fluent_templates::Loader;
-use crate::localization::localize;
+use crate::localization::*;
 use crate::{sources, Context, Error};
 use poise::serenity_prelude::{CreateSelectMenuKind, Mention};
 use poise::{serenity_prelude as serenity, CreateReply};
@@ -33,10 +32,13 @@ pub async fn temperature(ctx: Context<'_>,
             },
             Selection::OneOfMany(place) => {
                 let mut response = create_temperature_response(&ctx.data().http_client, place).await?;
-                // since this response will not be formatted as a reply to a slash command,
+                // Since this response will not be formatted as a reply to a slash command,
                 // mention the user who invoked this command
-                response = format!("{}\n\\- invoked by {}", response, Mention::User(ctx.author().id));
-                // response = localize!("response-invoked-by", message: response, user_mention: Mention::User(ctx.author().id));
+                response = localize!("response-invoked-by",
+                    message: response,
+                    user_mention: Mention::User(ctx.author().id)
+                );
+                
                 ctx.channel_id().say(ctx.http(), response).await?;
             },
             Selection::Aborted => {
