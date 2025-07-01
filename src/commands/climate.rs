@@ -22,7 +22,7 @@ pub async fn temperature(ctx: Context<'_>,
     };
 
     if places.is_empty() {
-        ctx.reply(format!("Could not find a matching place for `{}`", &place)).await?;
+        ctx.reply(localize!("place-not-found", search_term: &place)).await?;
     } else {
         // select a place from the list
         match select_place(ctx, &places).await {
@@ -67,8 +67,13 @@ async fn create_temperature_response(client: &reqwest::Client, place: &Place) ->
     match maybe_coordinates {
         Some(coordinates) => {
             let data = forecast::get_current_temperature(client, coordinates).await?;
-            let message = format!("The current temperature in **{}** is **`{}°C`** _(last updated: <t:{}:R>)_",
-                                  place.address_details(), data.temperature_2m, data.epoch);
+
+            let last_updated_info = localize_raw!("last-updated", unix_time: data.epoch);
+            let message = localize!("temperature-current-success",
+                place: place.address_details(),
+                celcius: data.temperature_2m,
+                last_updated: last_updated_info
+            );
             Ok(message)
         }
         None => {

@@ -18,4 +18,19 @@ macro_rules! localize {
     }};
 }
 
+macro_rules! localize_raw {
+    // Case 1: No arguments provided
+    ( $text_id:expr ) => {{
+        let output = localize!($text_id);
+        output.replace("\u{2068}", "").replace("\u{2069}", "")
+    }};
+
+    // Case 2: One or more arguments provided
+    ( $text_id:expr, $( $arg_name:ident: $arg_value:expr ),* $(,)? ) => {{
+        let output = localize!($text_id, $( $arg_name: $arg_value ),*);
+        output.replace("\u{2068}", "").replace("\u{2069}", "")
+    }};
+}
+
 pub(crate) use localize;
+pub(crate) use localize_raw;

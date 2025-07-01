@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use thiserror::Error;
 
-const LANGUAGE: LanguageIdentifier = langid!("de"); // sets the language for bot responses, place names etc.
+const LANGUAGE: LanguageIdentifier = langid!("de"); // sets the language for bot responses, place names, etc.
 
 type Context<'a> = poise::Context<'a, ApplicationState, Error>;
 

@@ -1,3 +1,4 @@
+use crate::localization::*;
 use crate::serenity;
 use crate::{Context, Error};
 
@@ -9,9 +10,7 @@ pub async fn help(
 ) -> Result<(), Error> {
 
     let config = poise::builtins::HelpConfiguration {
-        extra_text_at_bottom: "\
-Type ?help command for more info on a command.
-You can edit your message to the bot and the bot will edit its response.",
+        extra_text_at_bottom: &localize!("help-footer"),
         ..Default::default()
     };
 
@@ -27,7 +26,13 @@ pub async fn age(ctx: Context<'_>,
 ) -> Result<(), Error> {
 
     let u = user.as_ref().unwrap_or_else(|| ctx.author());
-    let response = format!("{}'s account was created at {}", u.name, u.created_at());
+    let discord_timestamp = localize_raw!("age-timestamp",
+        unix_time: u.created_at().unix_timestamp()
+    );
+    let response = localize!("age-account-created-at",
+        username: u.display_name(),
+        timestamp: discord_timestamp
+    );
 
     ctx.reply(response).await?;
     Ok(())
