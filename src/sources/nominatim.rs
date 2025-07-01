@@ -3,10 +3,10 @@ use crate::sources::common;
 use bot_macros::collect_fields;
 use cached::proc_macro::cached;
 use cached::SizedCache;
+use fluent_templates::{LanguageIdentifier};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt;
-use fluent_templates::{langid, LanguageIdentifier};
 use AddressLevel::*;
 
 
@@ -84,7 +84,7 @@ impl fmt::Display for Place {
         let mut summary = self.address_summary();
 
         // if the local place name differs from its name in the app language, add the latter in parentheses
-        if let Some(expected) = self.name.get_lang(crate::LANGUAGE) {
+        if let Some(expected) = self.name.get_lang(&crate::QUERY_LANG) {
             if !self.name.local.contains(expected) {
                 let replacement = format!("{} ({})", self.name, expected);
                 summary = summary.replacen(&self.name.to_string(), &replacement, 1);
@@ -111,7 +111,7 @@ impl From<&Place> for Option<Coordinates> {
 #[derive(Deserialize, Debug, Clone)]
 #[collect_fields({
    neighbourhood = [neighbourhood, allotments, quarter],
-   district = [city_district, suburb, subdivision, borough],
+   district = [suburb, city_district, subdivision, borough],
    hamlet = [hamlet, croft, isolated_dwelling],
    municipality = [village, town, municipality, city],
    county = [county, state_district],
@@ -222,18 +222,18 @@ pub struct PlaceName {
 impl PlaceName {
     const NAME_PREFIX: &'static str = "name:";
 
-    pub fn get_lang(&self, lang: LanguageIdentifier) -> Option<&String> {
+    pub fn get_lang(&self, lang: &LanguageIdentifier) -> Option<&String> {
         let name_key = |code: &str| format!("{}{}", Self::NAME_PREFIX, code);
 
         self.global.get(name_key(lang.language.as_str()).as_str())
     }
 
-    pub fn get_lang_or(&self, lang: LanguageIdentifier, default_lang: LanguageIdentifier) -> Option<&String> {
+    pub fn get_lang_or(&self, lang: &LanguageIdentifier, default_lang: &LanguageIdentifier) -> Option<&String> {
         self.get_lang(lang).or(self.get_lang(default_lang))
     }
 
-    pub fn get_lang_or_default(&self, lang: LanguageIdentifier) -> Option<&String> {
-        self.get_lang_or(lang, langid!("en"))
+    pub fn get_lang_or_default(&self, lang: &LanguageIdentifier) -> Option<&String> {
+        self.get_lang_or(lang, &crate::FALLBACK_LANGUAGE)
     }
 }
 impl fmt::Display for PlaceName {

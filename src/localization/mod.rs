@@ -3,7 +3,7 @@ pub use fluent_templates::Loader;
 macro_rules! localize {
     // Case 1: No arguments provided
     ( $text_id:expr ) => {{
-        $crate::LOCALES.lookup(&crate::LANGUAGE, $text_id)
+        $crate::LOCALES.lookup(&crate::USER_LANG, $text_id)
     }};
 
     // Case 2: One or more arguments provided
@@ -14,7 +14,7 @@ macro_rules! localize {
                 fluent_templates::fluent_bundle::FluentValue::String($arg_value.to_string().into()))
             ),*
         ]);
-        $crate::LOCALES.lookup_with_args(&crate::LANGUAGE, $text_id, &args)
+        $crate::LOCALES.lookup_with_args(&crate::USER_LANG, $text_id, &args)
     }};
 }
 

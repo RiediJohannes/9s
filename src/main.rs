@@ -5,6 +5,7 @@ mod sources;
 mod localization;
 
 use fluent_templates::{langid, LanguageIdentifier};
+use lazy_static::lazy_static;
 use localization::*;
 use log::*;
 use poise::{serenity_prelude as serenity, CreateReply, PrefixFrameworkOptions};
@@ -13,7 +14,19 @@ use std::sync::Arc;
 use std::time::Duration;
 use thiserror::Error;
 
-const LANGUAGE: LanguageIdentifier = langid!("de"); // sets the language for bot responses, place names, etc.
+
+const USER_LANG_ENV: Option<&str> = std::option_env!("USER_LANGUAGE");
+const QUERY_LANG_ENV: Option<&str> = std::option_env!("QUERY_LANGUAGE");
+const FALLBACK_LANGUAGE: LanguageIdentifier = langid!("en-UK");
+
+lazy_static! {
+    static ref USER_LANG: LanguageIdentifier = USER_LANG_ENV.map_or_else(|| FALLBACK_LANGUAGE,
+        |s| s.parse().expect("FATAL ERROR: Malformed fallback language"));
+
+    static ref QUERY_LANG: LanguageIdentifier = QUERY_LANG_ENV.map_or_else(|| FALLBACK_LANGUAGE,
+        |s| s.parse().expect("FATAL ERROR: Malformed fallback language"));
+}
+
 
 type Context<'a> = poise::Context<'a, ApplicationState, Error>;
 
@@ -54,6 +67,14 @@ fluent_templates::static_loader! {
 #[tokio::main]
 async fn main() {
     env_logger::init();
+
+    // check if querying ENV variables succeeded
+    if USER_LANG_ENV.is_none() {
+        warn!("Failed to parse ENV variable 'USER_LANGUAGE'. Falling back to default language '{}'", FALLBACK_LANGUAGE);
+    }
+    if QUERY_LANG_ENV.is_none() {
+        warn!("Failed to parse ENV variable 'QUERY_LANGUAGE'. Falling back to default language '{}'", FALLBACK_LANGUAGE);
+    }
 
     let token = std::env::var("DISCORD_TOKEN").expect("ENV_VAR 'DISCORD_TOKEN' could not be located!");
     let app_id = std::env::var("APPLICATION_ID").expect("ENV_VAR 'APPLICATION_ID' could not be located!");
