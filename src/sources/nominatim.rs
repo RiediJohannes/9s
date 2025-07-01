@@ -206,7 +206,7 @@ impl AddressLevel {
             State => &[State, Country],
             Country => &[Country, Continent],
             Continent => &[Continent],
-            _ => &[]
+            _ => &[Hamlet, Municipality, County, State],
         }
     }
 }
