@@ -5,9 +5,11 @@
       <sourceFolder url="file://$MODULE_DIR$/lib/bot-utils/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/lib/bot-macros/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/fluent-macros/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/lib/bot-macros/target" />
       <excludeFolder url="file://$MODULE_DIR$/lib/bot-utils/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
+      <excludeFolder url="file://$MODULE_DIR$/lib/fluent-macros/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
