@@ -1,6 +1,6 @@
-use super::common::{ApiError, ClimateApiError};
-use super::geocoding::Place;
 use crate::sources::common;
+use crate::sources::common::{ApiError, ClimateApiError};
+use crate::sources::nominatim::Place;
 use poise::serenity_prelude::Timestamp;
 use serde::Deserialize;
 
@@ -48,8 +48,8 @@ pub async fn get_temperature_series(client: &reqwest::Client, place: &Place,
     -> Result<Vec<TemperatureDataPoint>, ApiError>
 {
     let params = [
-        ("latitude", place.latitude.to_string()),
-        ("longitude", place.longitude.to_string()),
+        ("latitude", place.lat.to_string()),
+        ("longitude", place.lon.to_string()),
         ("hourly", "temperature_2m".to_string()),
         ("start_date", start_date.date_naive().to_string()),
         ("end_date", end_date.date_naive().to_string()),
