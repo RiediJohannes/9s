@@ -6,6 +6,7 @@ use serenity::CreateSelectMenuOption as MenuOption;
 use sources::climate_forecast as forecast;
 use sources::common::*;
 use sources::nominatim;
+use sources::geo_time;
 use sources::nominatim::Place;
 use crate::utils::parsing;
 
@@ -15,9 +16,9 @@ pub async fn temperature(ctx: Context<'_>,
                          #[description = "A specific date in the past"] date: Option<String>,
                          #[description = "A specific time of day"] time: Option<String>
 ) -> Result<(), Error> {
-    if let Err(e) = parsing::parse_datetime(date, time) {
+    if let Err(_) = parsing::parse_datetime(date, time) {
         todo!("handle date parsing error");
-        return Ok(())
+        //return Ok(())
     }
 
     // look up the requested place
@@ -74,7 +75,11 @@ async fn create_temperature_response(client: &reqwest::Client, place: &Place) ->
 
     match maybe_coordinates {
         Some(coordinates) => {
-            let data = forecast::get_current_temperature(client, coordinates).await?;
+            // TODO Include timezone information in datetime-specific temperature request
+            let timezone = geo_time::get_timezone(&coordinates);
+            println!("Timezone: {:?}", timezone);
+            
+            let data = forecast::get_current_temperature(client, &coordinates).await?;
 
             let last_updated_info = localize_raw!("last-updated", unix_time: data.epoch);
             let message = localize!("temperature-current-success",

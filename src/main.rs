@@ -12,6 +12,7 @@ use localization::*;
 use log::*;
 use poise::{serenity_prelude as serenity, CreateReply, PrefixFrameworkOptions};
 use serenity::GatewayIntents;
+use sources::geo_time;
 use std::sync::Arc;
 use std::time::Duration;
 use thiserror::Error;
@@ -69,6 +70,7 @@ fluent_templates::static_loader! {
 #[tokio::main]
 async fn main() {
     env_logger::init();
+    geo_time::init();
 
     // check if querying ENV variables succeeded
     if USER_LANG_ENV.is_none() {

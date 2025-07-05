@@ -31,7 +31,7 @@ pub struct CurrentTemp {
     convert = r#"{ point.clone() }"#,
     result = true
 )]
-pub async fn get_current_temperature(client: &reqwest::Client, point: Coordinates)
+pub async fn get_current_temperature(client: &reqwest::Client, point: &Coordinates)
     -> Result<CurrentTemp, ApiError> 
 {
     let params = [

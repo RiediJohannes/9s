@@ -2,7 +2,7 @@
 name = "DiscordBot9S"
 version = "0.2.1"
 edition = "2021"
-rust-version = "1.80"
+rust-version = "1.86"
 
 [dependencies]
 bot-macros = { path = "./lib/bot-macros" }
@@ -22,3 +22,4 @@ env_logger = "0.11.6"
 cached = { version = "0.54.0", features = ["async"] }
 lazy_static = "1.5.0"
 chrono = "0.4.41"
+tzf-rs = "1.0.0"
