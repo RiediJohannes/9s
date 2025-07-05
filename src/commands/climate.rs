@@ -7,11 +7,19 @@ use sources::climate_forecast as forecast;
 use sources::common::*;
 use sources::nominatim;
 use sources::nominatim::Place;
+use crate::utils::parsing;
 
 #[poise::command(slash_command, prefix_command, track_edits, aliases("temp"))]
 pub async fn temperature(ctx: Context<'_>,
                          #[description = "Name of a place"] place: String,
+                         #[description = "A specific date in the past"] date: Option<String>,
+                         #[description = "A specific time of day"] time: Option<String>
 ) -> Result<(), Error> {
+    if let Err(e) = parsing::parse_datetime(date, time) {
+        todo!("handle date parsing error");
+        return Ok(())
+    }
+
     // look up the requested place
     let geo_result = nominatim::query_place(&ctx.data().http_client, &place).await;
 

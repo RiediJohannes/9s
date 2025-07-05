@@ -3,6 +3,8 @@
 mod commands;
 mod sources;
 mod localization;
+mod utils;
+
 
 use fluent_templates::{langid, LanguageIdentifier};
 use lazy_static::lazy_static;
