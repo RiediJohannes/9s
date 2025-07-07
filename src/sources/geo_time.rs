@@ -1,7 +1,8 @@
+use super::common::Coordinates;
+pub use chrono_tz::Tz;
 use std::sync::OnceLock;
 use tzf_rs::gen::Timezones;
 use tzf_rs::Finder;
-use super::common::Coordinates;
 
 static FINDER: OnceLock<Finder> = OnceLock::new();
 
@@ -18,6 +19,10 @@ pub fn init() {
     get_finder(); // force initialization of the static FINDER if it hasn't been initialized yet
 }
 
-pub fn get_timezone(coordinates: &Coordinates) -> String {
+pub fn get_timezone_name(coordinates: &Coordinates) -> String {
     get_finder().get_tz_name(coordinates.longitude, coordinates.latitude).to_string()
+}
+
+pub fn get_timezone(coordinates: &Coordinates) -> Option<Tz> {
+    get_timezone_name(coordinates).parse().ok()
 }

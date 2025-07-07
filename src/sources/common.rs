@@ -62,6 +62,13 @@ impl Thousandth for f64 {
     }
 }
 
+#[derive(Deserialize, Debug, Clone)]
+pub struct SingleTemperature {
+    #[serde(rename = "time")]
+    pub epoch: u32,
+    pub temperature_2m: f32,
+}
+
 
 pub async fn query_api<TOutput, TSuccess, TFailure>(
     client: &reqwest::Client,

@@ -1,15 +1,14 @@
 use crate::localization::*;
-use crate::sources::climate_forecast::CurrentTemp;
 use crate::sources::common::*;
-use crate::sources::nominatim::Place;
-use crate::sources::{climate_forecast as forecast, geo_time, nominatim};
+use crate::sources::{climate_forecast as forecast, climate_historical as historic, geo_time, nominatim};
 use crate::utils::parsing;
 use crate::{Context, Error};
+use nominatim::Place;
 
-use chrono::NaiveDateTime;
+use chrono::{NaiveDateTime, TimeZone};
+use chrono_tz::Tz;
 use poise::{serenity_prelude as serenity, CreateReply};
-use serenity::{CreateSelectMenuKind, Mention, CreateSelectMenuOption as MenuOption};
-
+use serenity::{CreateSelectMenuKind, CreateSelectMenuOption as MenuOption, Mention};
 
 #[poise::command(slash_command, prefix_command, track_edits, aliases("temp"))]
 pub async fn temperature(ctx: Context<'_>,
@@ -21,9 +20,10 @@ pub async fn temperature(ctx: Context<'_>,
     let timestamp = if date.is_some() || time.is_some() {
         let parsed_datetime = match parsing::parse_datetime(date, time) {
             Ok(timestamp) => timestamp,
-            Err(_) => {
+            Err(e) => {
                 // todo!("Output user feedback to the discord context regarding timestamp parsing error");
-                return Err(Error::Unexpected {reason: "TBA".to_string(), subject: None});
+                //ctx.reply(localize!("timestamp-parse-error")).await?;
+                return Err(Error::Handled {inner: Box::new(e)});
             }
         };
         Some(parsed_datetime)
@@ -42,12 +42,12 @@ pub async fn temperature(ctx: Context<'_>,
     // select a place from the list
     match select_place(ctx, &places).await {
         Selection::Unique(place) => {
-            let data = get_single_time_temperature(&ctx.data().http_client, place, timestamp).await?;
+            let data = get_single_temperature(&ctx.data().http_client, place, timestamp).await?;
             let response = create_temperature_response(place, data);
             ctx.reply(response).await?;
         },
         Selection::OneOfMany(place) => {
-            let data = get_single_time_temperature(&ctx.data().http_client, place, timestamp).await?;
+            let data = get_single_temperature(&ctx.data().http_client, place, timestamp).await?;
             let mut response = create_temperature_response(place, data);
 
             // Since this response will not be formatted as a reply to a slash command,
@@ -78,7 +78,7 @@ pub enum Selection<T> {
 }
 
 
-async fn get_single_time_temperature(client: &reqwest::Client, place: &Place, timestamp: Option<NaiveDateTime>) -> Result<CurrentTemp,Error> {
+async fn get_single_temperature(client: &reqwest::Client, place: &Place, timestamp: Option<NaiveDateTime>) -> Result<SingleTemperature, Error> {
     let maybe_coordinates: Option<Coordinates> = place.into();
 
     match maybe_coordinates {
@@ -87,10 +87,19 @@ async fn get_single_time_temperature(client: &reqwest::Client, place: &Place, ti
                 Some(unlocalized_datetime) => {
                     let timezone = geo_time::get_timezone(&coordinates);
 
-                    // TODO Include timezone information in datetime-specific temperature request
+                    // include place-local timezone information in the requested datetime
+                    let localized_datetime = timezone
+                        .map(|tz| unlocalized_datetime.and_local_timezone(tz))
+                        .unwrap_or(Tz::Europe__Vienna.from_local_datetime(&unlocalized_datetime))
+                        .single();
 
-                    todo!("Execute past temperature request for localized timestamp");
-                    // Ok(data)
+                    let localized_datetime = localized_datetime.ok_or_else(|| Error::Unexpected {
+                        reason: "Could not localize timestamp to timezone of place!".to_string(),
+                        subject: Some(format!("Place: {:?}, timezone: {:?}", place, timezone))
+                    })?;
+
+                    let data = historic::get_past_temperature(client, &coordinates, &localized_datetime).await?;
+                    Ok(data)
                 }
                 None => {
                     let data = forecast::get_current_temperature(client, &coordinates).await?;
@@ -107,7 +116,7 @@ async fn get_single_time_temperature(client: &reqwest::Client, place: &Place, ti
     }
 }
 
-fn create_temperature_response(place: &Place, data: CurrentTemp) -> String {
+fn create_temperature_response(place: &Place, data: SingleTemperature) -> String {
     let last_updated_info = localize_raw!("last-updated", unix_time: data.epoch);
 
     localize!("temperature-current-success",

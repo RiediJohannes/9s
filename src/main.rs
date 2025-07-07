@@ -48,6 +48,11 @@ pub enum Error {
     #[error("Error in API request: {0}")]
     ApiError(#[from] sources::common::ApiError),
 
+    #[error("Handled error: {inner:?}")]
+    Handled {
+        inner: Box<dyn std::error::Error + Send + Sync>,
+    },
+
     #[error("Unexpected error occurred: {reason:?}\nsubject: {subject:?}")]
     Unexpected {
         reason: String,

@@ -1,4 +1,4 @@
-use super::common::{ApiError, ClimateApiError, Coordinates};
+use super::common::{ApiError, ClimateApiError, Coordinates, SingleTemperature};
 use crate::sources::common;
 use cached::proc_macro::cached;
 use cached::TimedCache;
@@ -9,30 +9,23 @@ const CACHE_TTL_SECONDS: u64 = 120;
 
 #[derive(Deserialize, Debug)]
 struct CurrentTempResult {
-    current: CurrentTemp,
+    current: SingleTemperature,
 }
-impl From<CurrentTempResult> for CurrentTemp {
+impl From<CurrentTempResult> for SingleTemperature {
     fn from(result: CurrentTempResult) -> Self {
         result.current
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
-pub struct CurrentTemp {
-    #[serde(rename = "time")]
-    pub epoch: u32,
-    pub temperature_2m: f32,
-}
-
 
 #[cached(
-    ty = "TimedCache<Coordinates, CurrentTemp>",
+    ty = "TimedCache<Coordinates, SingleTemperature>",
     create = "{ TimedCache::with_lifespan(CACHE_TTL_SECONDS) }",
     convert = r#"{ point.clone() }"#,
     result = true
 )]
 pub async fn get_current_temperature(client: &reqwest::Client, point: &Coordinates)
-    -> Result<CurrentTemp, ApiError> 
+    -> Result<SingleTemperature, ApiError>
 {
     let params = [
         ("latitude", point.latitude.to_string()),
@@ -41,6 +34,6 @@ pub async fn get_current_temperature(client: &reqwest::Client, point: &Coordinat
         ("timeformat", "unixtime".to_string()),
     ];
 
-    common::query_api::<CurrentTemp, CurrentTempResult, ClimateApiError>
+    common::query_api::<SingleTemperature, CurrentTempResult, ClimateApiError>
         (client, BASE_URL, params).await
 }
