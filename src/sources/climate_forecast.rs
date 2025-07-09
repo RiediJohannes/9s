@@ -21,15 +21,15 @@ impl From<CurrentTempResult> for SingleTemperature {
 #[cached(
     ty = "TimedCache<Coordinates, SingleTemperature>",
     create = "{ TimedCache::with_lifespan(CACHE_TTL_SECONDS) }",
-    convert = r#"{ point.clone() }"#,
+    convert = r#"{ location.clone() }"#,
     result = true
 )]
-pub async fn get_current_temperature(client: &reqwest::Client, point: &Coordinates)
-    -> Result<SingleTemperature, ApiError>
+pub async fn get_current_temperature(client: &reqwest::Client, location: &Coordinates)
+                                     -> Result<SingleTemperature, ApiError>
 {
     let params = [
-        ("latitude", point.latitude.to_string()),
-        ("longitude", point.longitude.to_string()),
+        ("latitude", location.latitude.to_string()),
+        ("longitude", location.longitude.to_string()),
         ("current", "temperature_2m".to_string()),
         ("timeformat", "unixtime".to_string()),
     ];
