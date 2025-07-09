@@ -23,27 +23,30 @@ struct TemperatureSeries {
     #[serde(alias = "temperature_2m")]
     pub temperatures: Vec<f32>,
 }
-impl TemperatureSeries {
-    pub fn to_vec(&self) -> Vec<TemperatureDataPoint> {
-        self.times.iter()
-            .zip(self.temperatures.iter())
-            .map(|(&time, &temp)| TemperatureDataPoint {
-                time: time as i64,
-                value: temp,
-            })
-            .collect()
-    }
 
-    pub fn to_ordered(&self) -> BTreeSet<TemperatureDataPoint> {
+// private type alias to make IntoIterator for TemperatureSeries more readable
+type TemperatureSeriesIter<'a> = std::iter::Map<
+    std::iter::Zip<
+        std::slice::Iter<'a, u32>,
+        std::slice::Iter<'a, f32>
+    >,
+    fn((&u32, &f32)) -> TemperatureDataPoint
+>;
+
+impl<'a> IntoIterator for &'a TemperatureSeries {
+    type Item = TemperatureDataPoint;
+    type IntoIter = TemperatureSeriesIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
         self.times.iter()
             .zip(self.temperatures.iter())
             .map(|(&time, &temp)| TemperatureDataPoint {
                 time: time as i64,
                 value: temp,
             })
-            .collect()
     }
 }
+
 
 #[derive(Debug, Clone, Default)]
 pub struct TemperatureDataPoint {
@@ -76,12 +79,12 @@ impl From<TemperatureDataPoint> for SingleTemperature {
 }
 impl From<HistoricalTemperature> for Vec<TemperatureDataPoint> {
     fn from(historical_temp: HistoricalTemperature) -> Self {
-        historical_temp.series.to_vec()
+        historical_temp.series.into_iter().collect()       
     }
 }
 impl From<HistoricalTemperature> for BTreeSet<TemperatureDataPoint> {
     fn from(historical_temp: HistoricalTemperature) -> Self {
-        historical_temp.series.to_ordered()
+        historical_temp.series.into_iter().collect()       
     }
 }
 
