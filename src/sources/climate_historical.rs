@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use crate::geo_time::Tz;
 use crate::sources::common;
 use crate::sources::common::{ApiError, ClimateApiError, Coordinates, SingleTemperature};
@@ -5,6 +6,8 @@ use chrono::DateTime;
 use serde::Deserialize;
 
 const BASE_URL: &str = "https://archive-api.open-meteo.com/v1/archive";
+
+// ----------------------- Type Definitions --------------------------
 
 #[derive(Deserialize, Debug)]
 struct HistoricalTemperature {
@@ -20,7 +23,17 @@ struct TemperatureSeries {
     pub temperatures: Vec<f32>,
 }
 impl TemperatureSeries {
-    fn flatten(&self) -> Vec<TemperatureDataPoint> {
+    fn to_vec(&self) -> Vec<TemperatureDataPoint> {
+        self.times.iter()
+            .zip(self.temperatures.iter())
+            .map(|(&time, &temp)| TemperatureDataPoint {
+                time,
+                value: temp,
+            })
+            .collect()
+    }
+
+    fn to_ordered(&self) -> BTreeSet<TemperatureDataPoint> {
         self.times.iter()
             .zip(self.temperatures.iter())
             .map(|(&time, &temp)| TemperatureDataPoint {
@@ -36,6 +49,22 @@ pub struct TemperatureDataPoint {
     pub time: u32,
     pub value: f32,
 }
+impl PartialEq for TemperatureDataPoint {
+    fn eq(&self, other: &Self) -> bool {
+        self.time == other.time
+    }
+}
+impl Eq for TemperatureDataPoint {}
+impl PartialOrd for TemperatureDataPoint {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for TemperatureDataPoint {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.time.cmp(&other.time)
+    }
+}
 impl From<TemperatureDataPoint> for SingleTemperature {
     fn from(data_point: TemperatureDataPoint) -> Self {
         SingleTemperature {
@@ -46,10 +75,16 @@ impl From<TemperatureDataPoint> for SingleTemperature {
 }
 impl From<HistoricalTemperature> for Vec<TemperatureDataPoint> {
     fn from(historical_temp: HistoricalTemperature) -> Self {
-        historical_temp.series.flatten()
+        historical_temp.series.to_vec()
+    }
+}
+impl From<HistoricalTemperature> for BTreeSet<TemperatureDataPoint> {
+    fn from(historical_temp: HistoricalTemperature) -> Self {
+        historical_temp.series.to_ordered()
     }
 }
 
+// ----------------------- Public Functions --------------------------
 
 pub async fn get_past_temperature(client: &reqwest::Client, point: &Coordinates, datetime: &DateTime<Tz>)
                                   -> Result<SingleTemperature, ApiError>
@@ -63,7 +98,7 @@ pub async fn get_past_temperature(client: &reqwest::Client, point: &Coordinates,
 
 pub async fn get_temperature_series(client: &reqwest::Client, point: &Coordinates,
                                     start_date: &DateTime<Tz>, end_date: &DateTime<Tz>)
-    -> Result<Vec<TemperatureDataPoint>, ApiError>
+    -> Result<BTreeSet<TemperatureDataPoint>, ApiError>
 {
     if start_date > end_date {
         return Err(ApiError::BadRequest {
@@ -81,6 +116,6 @@ pub async fn get_temperature_series(client: &reqwest::Client, point: &Coordinate
         ("timeformat", "unixtime".to_string()),
     ];
 
-    common::query_api::<Vec<TemperatureDataPoint>, HistoricalTemperature, ClimateApiError>
+    common::query_api::<BTreeSet<TemperatureDataPoint>, HistoricalTemperature, ClimateApiError>
         (client, BASE_URL, params).await
 }
