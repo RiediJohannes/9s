@@ -1,9 +1,9 @@
 use crate::geo_time::Tz;
 use crate::sources::common;
 use crate::sources::common::{ApiError, ClimateApiError, Coordinates, SingleTemperature};
-use chrono::DateTime;
+use chrono::{DateTime, DurationRound, TimeDelta};
 use serde::Deserialize;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Bound::Included;
 
 const BASE_URL: &str = "https://archive-api.open-meteo.com/v1/archive";
@@ -87,17 +87,37 @@ impl From<HistoricalTemperature> for BTreeSet<TemperatureDataPoint> {
         historical_temp.series.into_iter().collect()       
     }
 }
+impl From<HistoricalTemperature> for BTreeMap<i64, TemperatureDataPoint> {
+    fn from(historical_temp: HistoricalTemperature) -> Self {
+        historical_temp.series.into_iter()
+            .map(|point| (point.time, point))
+            .collect()
+    }
+}
+impl FromIterator<TemperatureDataPoint> for BTreeMap<i64, TemperatureDataPoint> {
+    fn from_iter<T: std::iter::IntoIterator<Item = TemperatureDataPoint>>(iter: T) -> Self
+    {
+        iter.into_iter().map(|point| (point.time, point)).collect()
+    }
+}
 
 // ----------------------- Public Functions --------------------------
 
-pub async fn get_past_temperature(client: &reqwest::Client, point: &Coordinates, timestamp: &DateTime<Tz>)
+pub async fn get_past_temperature(client: &reqwest::Client, location: &Coordinates, timestamp: &DateTime<Tz>)
                                   -> Result<SingleTemperature, ApiError>
 {
-    let temperature_series = get_temperature_series(client, point, timestamp, timestamp).await?;
+    // round the timestamp to the nearest hour, since the API only stores temperature data every hour
+    let rounded_timestamp = timestamp.duration_round(TimeDelta::hours(1))
+        .map_err(|_| ApiError::BadRequest { reason: "Rounding the timestamp exceeded its possible value space".to_string()})?;
+    
+    let temperature_series = get_temperature_series(client, location, &rounded_timestamp, &rounded_timestamp).await?;
 
-    // TODO Grab the correct temperature point from the series according to the time of the time stamp
-    //      Note, the series only has hourly data. Also, it might make sense to change the Vec to a BTree or something similar
-    Ok(temperature_series.first().unwrap().clone().into())
+    let data = temperature_series.get(&rounded_timestamp.timestamp());
+
+    match data {
+        Some(temperature_point) => Ok(temperature_point.clone().into()),
+        None => Err(ApiError::NotFound)
+    }
 }
 
 /// Queries the historic weather API for a series of hourly temperature data at the given geographic
@@ -120,7 +140,7 @@ pub async fn get_past_temperature(client: &reqwest::Client, point: &Coordinates,
 /// ```
 pub async fn get_temperature_series(client: &reqwest::Client, location: &Coordinates,
                                     start_time: &DateTime<Tz>, end_time: &DateTime<Tz>)
-                                    -> Result<BTreeSet<TemperatureDataPoint>, ApiError>
+                                    -> Result<BTreeMap<i64, TemperatureDataPoint>, ApiError>
 {
     if start_time > end_time {
         return Err(ApiError::BadRequest {
@@ -138,22 +158,17 @@ pub async fn get_temperature_series(client: &reqwest::Client, location: &Coordin
         ("timeformat", "unixtime".to_string()),
     ];
 
-    let temperature_series = common::query_api::<BTreeSet<TemperatureDataPoint>, HistoricalTemperature, ClimateApiError>
+    let temperature_series =
+        common::query_api::<BTreeMap<i64, TemperatureDataPoint>, HistoricalTemperature, ClimateApiError>
         (client, BASE_URL, params).await;
 
-    let start_point = TemperatureDataPoint {
-        time: start_time.timestamp(),
-        ..Default::default()
-    };
-    let end_point = TemperatureDataPoint {
-        time: end_time.timestamp(),
-        ..Default::default()
-    };
+    let start_point = start_time.timestamp();
+    let end_point = end_time.timestamp();
 
     // return a subset of the temperature series that falls within the given time interval
     temperature_series.map(|series| {
         series.range((Included(&start_point), Included(&end_point)))
-            .cloned()
-            .collect::<BTreeSet<_>>()
+            .map(|(&time, value)| (time, value.clone()))
+            .collect::<BTreeMap<i64, TemperatureDataPoint>>()
     })
 }

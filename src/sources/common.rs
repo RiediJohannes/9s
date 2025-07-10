@@ -12,7 +12,10 @@ pub enum ApiError {
     
     #[error("Failed to parse API response: {0}")]
     Parsing(#[from] serde_json::Error),
-
+    
+    #[error("Could not find the requested item")]
+    NotFound,
+    
     #[error("Bad request: {reason:?}")]
     BadRequest {
         reason: String
