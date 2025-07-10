@@ -28,7 +28,7 @@ fn try_parse_localized_date(date_str: &str) -> NaiveDate {
 
     // TODO Try to parse the date in one of these formats one after another
 
-    todo!("Parse date")
+    NaiveDate::from_ymd(2023, 1, 1)
 }
 
 fn try_parse_localized_time(date_str: &str) -> NaiveTime {

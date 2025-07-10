@@ -1,12 +1,14 @@
 use crate::geo_time::Tz;
 use crate::sources::common;
 use crate::sources::common::{ApiError, ClimateApiError, Coordinates, SingleTemperature};
-use chrono::{DateTime, DurationRound, TimeDelta};
+use chrono::{DateTime, DurationRound, NaiveDate, TimeDelta, Utc};
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Bound::Included;
 
 const BASE_URL: &str = "https://archive-api.open-meteo.com/v1/archive";
+static EARLIEST_DATA: NaiveDate = NaiveDate::from_ymd_opt(1940, 1, 1)
+    .expect("Invalid start date entered for 'EARLIEST_DATA'!");
 
 // ----------------------- Type Definitions --------------------------
 
@@ -142,12 +144,27 @@ pub async fn get_temperature_series(client: &reqwest::Client, location: &Coordin
                                     start_time: &DateTime<Tz>, end_time: &DateTime<Tz>)
                                     -> Result<BTreeMap<i64, TemperatureDataPoint>, ApiError>
 {
+    // check for incorrect datetime ranges
     if start_time > end_time {
         return Err(ApiError::BadRequest {
             reason: "Start date must be less than or equal to end date".to_string(),
         })
     }
 
+    if start_time.date_naive() < EARLIEST_DATA {
+        return Err(ApiError::BadRequest {
+            reason: format!("There is no climate data available before {}", EARLIEST_DATA)
+        })
+    }
+
+    if end_time.date_naive() > Utc::now().date_naive() {
+        return Err(ApiError::BadRequest {
+            reason: "Cannot predict climate data in the future!".to_string()
+        })
+    }
+
+
+    // execute the request
     let params = [
         ("latitude", location.latitude.to_string()),
         ("longitude", location.longitude.to_string()),
