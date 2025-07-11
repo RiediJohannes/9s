@@ -4,7 +4,6 @@ use crate::sources::common::{ApiError, ClimateApiError, Coordinates, SingleTempe
 use chrono::{DateTime, DurationRound, NaiveDate, TimeDelta, Utc};
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
-use std::ops::Bound::Included;
 
 const BASE_URL: &str = "https://archive-api.open-meteo.com/v1/archive";
 static EARLIEST_DATA: NaiveDate = NaiveDate::from_ymd_opt(1940, 1, 1)
@@ -183,9 +182,10 @@ pub async fn get_temperature_series(client: &reqwest::Client, location: &Coordin
     let end_point = end_time.timestamp();
 
     // return a subset of the temperature series that falls within the given time interval
-    temperature_series.map(|series| {
-        series.range((Included(&start_point), Included(&end_point)))
-            .map(|(&time, value)| (time, value.clone()))
-            .collect::<BTreeMap<i64, TemperatureDataPoint>>()
+    temperature_series.map(|mut series| {
+        let mut target = series.split_off(&start_point); // take only data after start
+        target.split_off(&(end_point + 1)); // remove data after end
+
+        target // return what remains within interval [start, end]
     })
 }
